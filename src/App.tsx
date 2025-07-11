@@ -214,35 +214,75 @@ function App() {
     return hasMatch
   }
 
-  // Function to calculate rizz index based on performance
+  // Function to check if game should timeout
+  const checkGameTimeout = (messageCount: number, startTime: Date | null): boolean => {
+    if (!startTime) return false
+    
+    const currentTime = new Date()
+    const timeElapsed = (currentTime.getTime() - startTime.getTime()) / 1000 // seconds
+    const timeInMinutes = timeElapsed / 60
+    
+    // Game over if more than 5 minutes OR 30 messages
+    return timeInMinutes > 5 || messageCount >= 30
+  }
+
+  // Function to handle game timeout
+  const handleGameTimeout = (messageCount: number, wordCount: number) => {
+    console.log('⏰ Game timed out! Too slow or too many messages.')
+    
+    const timeoutMetrics: GameMetrics = {
+      startTime: gameMetrics.startTime,
+      totalWords: wordCount,
+      totalTime: gameMetrics.startTime ? Math.floor((new Date().getTime() - gameMetrics.startTime.getTime()) / 1000) : 0,
+      rizzIndex: 0 // Zero rizz for timeout
+    }
+
+    // Show timeout popup
+    setIsGameCompleted(true)
+    setGameCompletion({
+      isVisible: true,
+      metrics: timeoutMetrics
+    })
+  }
+
+  // Function to calculate rizz index based on performance (much stricter now)
   const calculateRizzIndex = (wordCount: number, timeInSeconds: number, messageCount: number): number => {
-    let rizzScore = 50 // Base score
-    
-    // Efficiency bonus (fewer words = better rizz)
-    const wordsPerMessage = wordCount / Math.max(messageCount, 1)
-    if (wordsPerMessage <= 10) rizzScore += 20        // Very efficient
-    else if (wordsPerMessage <= 20) rizzScore += 10   // Efficient
-    else if (wordsPerMessage <= 30) rizzScore += 5    // Decent
-    else rizzScore -= 10                              // Too wordy
-    
-    // Speed bonus (faster conversation = better rizz)
     const timeInMinutes = timeInSeconds / 60
-    if (timeInMinutes <= 2) rizzScore += 15           // Lightning fast
-    else if (timeInMinutes <= 5) rizzScore += 10      // Quick
-    else if (timeInMinutes <= 10) rizzScore += 5      // Decent pace
-    else rizzScore -= 5                               // Too slow
     
-    // Message count efficiency (fewer messages = better)
-    if (messageCount <= 5) rizzScore += 15            // Smooth operator
-    else if (messageCount <= 10) rizzScore += 10      // Good flow
-    else if (messageCount <= 15) rizzScore += 5       // Average
-    else rizzScore -= 10                              // Took too long
+    // Perfect rizz requirements: under 1 minute AND under 5 messages
+    if (timeInMinutes < 1 && messageCount < 5) {
+      return 100 // Legendary rizz
+    }
     
-    // Bonus for ultra-fast success (under 1 minute)
-    if (timeInMinutes < 1) rizzScore += 10
+    // Start with base score based on time and message efficiency
+    let rizzScore = 0
     
-    // Bonus for minimal words (under 50 total words)
-    if (wordCount < 50) rizzScore += 10
+    // Time-based scoring (much stricter)
+    if (timeInMinutes < 1) rizzScore += 90
+    else if (timeInMinutes < 2) rizzScore += 75
+    else if (timeInMinutes < 3) rizzScore += 60
+    else if (timeInMinutes < 4) rizzScore += 45
+    else if (timeInMinutes < 5) rizzScore += 30
+    else rizzScore += 10 // Anything over 5 minutes is poor rizz
+    
+    // Message count scoring (very strict)
+    if (messageCount <= 3) rizzScore += 10      // Bonus for ultra-efficient
+    else if (messageCount <= 5) rizzScore += 5  // Good efficiency
+    else if (messageCount <= 10) rizzScore += 0 // Average
+    else if (messageCount <= 15) rizzScore -= 10 // Getting wordy
+    else if (messageCount <= 20) rizzScore -= 20 // Too many messages
+    else rizzScore -= 30                         // Way too many messages
+    
+    // Word efficiency bonus/penalty
+    const wordsPerMessage = wordCount / Math.max(messageCount, 1)
+    if (wordsPerMessage <= 8) rizzScore += 5        // Concise
+    else if (wordsPerMessage <= 15) rizzScore += 0  // Average
+    else if (wordsPerMessage <= 25) rizzScore -= 5  // Wordy
+    else rizzScore -= 10                            // Too verbose
+    
+    // Penalty for taking too long or too many messages
+    if (timeInMinutes > 3) rizzScore -= 10
+    if (messageCount > 10) rizzScore -= 10
     
     // Cap the score between 0 and 100
     return Math.max(0, Math.min(100, Math.round(rizzScore)))
@@ -285,6 +325,13 @@ function App() {
     setConversationContext(newContext)
     setInputText('')
     setIsTyping(true)
+
+    // Check for timeout before generating AI response
+    if (checkGameTimeout(newContext.messageCount, gameMetrics.startTime)) {
+      setIsTyping(false)
+      handleGameTimeout(newContext.messageCount, gameMetrics.totalWords + userWords)
+      return
+    }
 
     try {
       console.log('📩 User sent:', inputText)
@@ -413,6 +460,7 @@ function App() {
 
   // Function to get rizz rating text
   const getRizzRating = (score: number): { text: string; emoji: string } => {
+    if (score === 0) return { text: "TIMEOUT", emoji: "⏰" }
     if (score >= 90) return { text: "LEGENDARY RIZZ", emoji: "👑" }
     if (score >= 80) return { text: "ELITE RIZZ", emoji: "🔥" }
     if (score >= 70) return { text: "SOLID RIZZ", emoji: "✨" }
@@ -428,13 +476,26 @@ function App() {
 
     const { metrics } = gameCompletion
     const rating = getRizzRating(metrics.rizzIndex)
+    const isTimeout = metrics.rizzIndex === 0
 
     return (
       <div className="game-completion-overlay">
         <div className="game-completion-popup">
           <div className="popup-header">
-            <h2>🎉 Date Secured!</h2>
-            <p>Congratulations! You successfully asked them out!</p>
+            {isTimeout ? (
+              <>
+                <h2>⏰ Game Over!</h2>
+                <p>Time's up! You took too long or sent too many messages.</p>
+                <p className="timeout-message">
+                  {metrics.totalTime > 300 ? 'Over 5 minutes' : '30+ messages'} - work on your efficiency!
+                </p>
+              </>
+            ) : (
+              <>
+                <h2>🎉 Date Secured!</h2>
+                <p>Congratulations! You successfully asked them out!</p>
+              </>
+            )}
           </div>
           
           <div className="metrics-container">
@@ -473,7 +534,7 @@ function App() {
                 generateNewPersona()
               }}
             >
-              Try New Match
+              {isTimeout ? 'Try Again (Be Faster!)' : 'Try New Match'}
             </button>
           </div>
         </div>
