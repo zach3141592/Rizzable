@@ -160,8 +160,9 @@ function App() {
     console.log('🔍 Checking for date agreement in:', response)
     console.log('🔍 User message context:', userMsg)
     
-    // Check if user message contains date invitation words
-    const userAskedForDate = /\b(dinner|lunch|coffee|drinks|movie|date|go out|hang out|meet up|wanna|want to|would you like to)\b/.test(userMsg)
+    // Check if user message contains explicit date invitation words
+    const userAskedForDate = /\b(dinner|lunch|coffee|drinks|movie|date|go out|hang out|meet up)\b/.test(userMsg) && 
+                             /\b(wanna|want to|would you like to|let['']?s|should we|how about|what about)\b/.test(userMsg)
     console.log('🔍 User asked for date:', userAskedForDate)
     
     // Patterns that indicate date agreement
@@ -194,8 +195,9 @@ function App() {
       /(sounds good|sounds great|sounds fun|sounds perfect|that sounds amazing)/,
       /(i['d]? love that|i['d]? like that|that would be nice|that would be fun)/,
       
-      // When they ask follow-up questions after being asked out
-      /(when|where|what time|how about|what about)/,
+      // When they ask follow-up questions after being asked out (more specific)
+      /^(when|where|what time)\??\s*$/,
+      /(when (do you|would you|should we)|where (do you|would you|should we)|what time (do you|would you|should we))/,
       
       // Additional Gen Z patterns
       /(that['s]? so cute|you['re]? so sweet|this is so exciting|i['m]? actually excited)/,
@@ -215,20 +217,18 @@ function App() {
       /(yes|yeah|yep|sure|absolutely|definitely|totally).*(!|\.|\?|$)/,
       /(bet|say less|i['m]? down|let['s]? go).*(!|\.|\?|$)/,
       
-      // Positive responses with emojis or extra words
-      /(yes|yeah|yep|sure|absolutely|definitely|totally).*(so|really|totally|actually|fr|for real)/,
-      /(yes|yeah|yep|sure).*(sounds|that|would|could|should)/,
-      /(sounds|that).*(good|great|fun|perfect|amazing|nice|cool)/,
+      // Positive responses to date invitations (more specific)
+      /(yes|yeah|yep|sure|absolutely|definitely|totally).*(sounds good|sounds great|sounds fun|sounds perfect)/,
+      /(that sounds|that would be).*(good|great|fun|perfect|amazing|nice|cool)/,
       
-      // Enthusiastic agreement (shorter responses)
-      /(omg|yasss|yesss|definitely|absolutely|totally|hell yes)/,
+      // Enthusiastic agreement to date invitations
+      /(omg yes|yasss|yesss|hell yes)/,
       /(so down|i['m]? down|let['s]? do it|count me in)/,
-      /(that would be|that sounds|i['d]? love|i['d]? like)/,
+      /(that would be (fun|nice|great|perfect|amazing)|i['d]? love (to|that)|i['d]? like (to|that))/,
       
-      // Gen Z casual agreements
-      /(fr|for real|no cap|period|periodt|bestie|ngl|not gonna lie)/,
-      /(fire|lit|slaps|hits different|a vibe|the vibe|main character)/,
-      /(lowkey|highkey|literally|actually|so|really|super)/,
+      // Gen Z casual agreements (more specific to date context)
+      /(fr that sounds|for real that sounds|no cap that sounds|period let['s]? do it)/,
+      /(that['s]? fire|that['s]? lit|that['s]? a vibe).*(let['s]?|we should|sounds good)/,
     ]
     
     // Check standard patterns first
