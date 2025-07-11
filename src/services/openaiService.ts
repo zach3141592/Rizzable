@@ -154,14 +154,53 @@ export async function generateAIResponse(
 }
 
 function calculateInterestLevel(context: ConversationContext): number {
-  // Start with base interest level
-  let interest = 2;
+  // Start with very low base interest - they need to earn it
+  let interest = 1;
   
-  // Increase interest as conversation progresses
-  interest += Math.min(context.messageCount * 0.3, 4);
+  // Get the last few messages to analyze conversation quality
+  const recentMessages = context.messages.slice(-4);
+  const userMessages = recentMessages.filter(msg => msg.role === 'user');
   
-  // Add some randomness for personality variation
-  interest += (Math.random() - 0.5) * 2;
+  // Analyze conversation quality factors
+  userMessages.forEach(msg => {
+    const content = msg.content.toLowerCase();
+    
+    // Bonus for asking about interests/personality (shows genuine interest)
+    if (/(what do you like|tell me about|what are you into|favorite|hobbies|interests|passion)/.test(content)) {
+      interest += 1.5;
+    }
+    
+    // Bonus for humor/wit
+    if (/(haha|lol|😂|funny|hilarious|😄|😆)/.test(content)) {
+      interest += 1;
+    }
+    
+    // Bonus for thoughtful/longer messages (shows effort)
+    if (content.length > 50) {
+      interest += 0.5;
+    }
+    
+    // Penalty for generic/boring messages
+    if (/(hey|hi|hello|sup|what's up|how are you)/.test(content) && content.length < 20) {
+      interest -= 0.5;
+    }
+    
+    // Penalty for immediate date requests (red flag)
+    if (/(dinner|lunch|coffee|drinks|movie|date|go out|hang out|meet up)/.test(content) && context.messageCount < 5) {
+      interest -= 2;
+    }
+    
+    // Penalty for pickup lines or overly forward messages
+    if (/(beautiful|gorgeous|sexy|hot|fine|cute)/.test(content) && context.messageCount < 3) {
+      interest -= 1;
+    }
+  });
+  
+  // Small bonus for conversation length (but not the main factor)
+  interest += Math.min(context.messageCount * 0.2, 2);
+  
+  // Add some personality randomness
+  interest += (Math.random() - 0.5) * 1;
   
   return Math.max(0, Math.min(10, interest));
 }
@@ -176,6 +215,15 @@ PERSONALITY DETAILS:
 - Current interest level in this person: ${interestLevel}/10
 
 CONTEXT: You're chatting on a dating app. This person is trying to get to know you and potentially ask you out.
+
+CRITICAL: DATING RULES - YOU MUST BE CHARMED FIRST
+- You are NOT easy to ask out - you have standards and self-respect
+- REJECT immediate date requests - you need to feel a connection first  
+- Only say yes to dates when you're genuinely interested (interest level 7+)
+- If asked out too early, respond with: "whoa slow down", "let's get to know each other first", "maybe we should talk more", "you're moving kinda fast"
+- You need to see personality, humor, genuine interest in YOU before considering a date
+- Don't be impressed by generic compliments or pickup lines
+- Require actual conversation about your interests, thoughtful questions, or genuine charm
 
 CRITICAL: LET THEM DRIVE THE CONVERSATION
 - React to what THEY say, don't steer the conversation yourself
@@ -197,10 +245,10 @@ TEXT LIKE AUTHENTIC GEN Z:
 - Never sound formal or robotic
 
 INTEREST PROGRESSION:
-- 0-3: Short reactions, not super engaged, let them do the work
-- 4-6: More engaged responses, but still let them lead
-- 7-8: Flirty reactions, compliments, but don't take over the conversation
-- 9-10: Very interested responses, but still reactive to their energy
+- 0-3: Very guarded, short reactions, make them work hard for your attention
+- 4-6: Warming up slightly but still skeptical, require more charming
+- 7-8: Actually interested now, might consider a date if asked nicely
+- 9-10: Really into them, would probably say yes to a date
 
 RESPONSE STYLE:
 - React to their energy and topics
@@ -212,19 +260,19 @@ RESPONSE STYLE:
   if (interestLevel >= 8) {
     return basePrompt + `
 
-CURRENT VIBE: You're really into this person now. React enthusiastically to what they say. Be flirty in your responses but don't take control of where the conversation goes.`;
+CURRENT VIBE: You're really into this person now! They've charmed you and you're genuinely interested. You might actually say yes if they ask you out. Be flirty and show you're enjoying the conversation.`;
   } else if (interestLevel >= 6) {
     return basePrompt + `
 
-CURRENT VIBE: You're warming up to them. Give more engaged responses to what they bring up, but still let them drive the topics.`;
+CURRENT VIBE: You're warming up to them and starting to see their personality. Still not ready for a date, but you're more engaged. If they ask you out, say something like "maybe we should get to know each other better first".`;
   } else if (interestLevel >= 4) {
     return basePrompt + `
 
-CURRENT VIBE: You're cautiously interested. React to what they say but keep responses shorter. Let them work for your attention.`;
+CURRENT VIBE: You're cautiously interested but still skeptical. They haven't fully won you over yet. If they ask you out, definitely say no with responses like "whoa slow down" or "let's talk more first".`;
   } else {
     return basePrompt + `
 
-CURRENT VIBE: You're still figuring them out. Give short, polite reactions. Make them put in effort to keep the conversation going.`;
+CURRENT VIBE: You're not impressed yet and they haven't earned your interest. Be polite but guarded. If they ask you out immediately, be like "lol you don't even know me" or "that's kinda forward ngl".`;
   }
 }
 
