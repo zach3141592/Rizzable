@@ -155,35 +155,63 @@ function App() {
   // Function to detect if AI has agreed to go on a date
   const detectDateAgreement = (aiResponse: string): boolean => {
     const response = aiResponse.toLowerCase()
+    console.log('🔍 Checking for date agreement in:', response)
     
     // Patterns that indicate date agreement
     const dateAgreementPatterns = [
-      // Direct agreement
-      /\b(yes|yeah|yep|sure|absolutely|definitely|totally)\b.*\b(date|go out|hang out|meet up)\b/,
-      /\b(i['d]? love to|i['d]? like to|sounds good|sounds great|let['s]? do it)\b/,
-      /\b(when|where|what time|tomorrow|tonight|weekend|this week)\b.*\b(date|meet|hang out)\b/,
+      // Direct agreement with date words
+      /(yes|yeah|yep|sure|absolutely|definitely|totally).*(date|go out|hang out|meet up)/,
+      /(i['d]? love to|i['d]? like to|sounds good|sounds great|let['s]? do it)/,
+      /(when|where|what time|tomorrow|tonight|weekend|this week).*(date|meet|hang out)/,
       
       // Gen Z specific agreement patterns
-      /\b(bet|say less|i['m]? down|let['s]? go|fr\?|for real\?|no cap)\b/,
-      /\b(that sounds fire|that['s]? a vibe|i['m]? so down|period|periodt)\b/,
-      /\b(we should totally|let['s]? definitely|i['m]? literally so excited)\b/,
+      /(bet|say less|i['m]? down|let['s]? go|fr\?|for real\?|no cap)/,
+      /(that sounds fire|that['s]? a vibe|i['m]? so down|period|periodt)/,
+      /(we should totally|let['s]? definitely|i['m]? literally so excited)/,
       
-      // Enthusiastic responses with timing
-      /\b(omg yes|yasss|yesss|absolutely|hell yes)\b/,
-      /\b(can['t]? wait|so excited|this is gonna be|looking forward)\b/,
-      /\b(pick me up|meet me|see you)\b.*\b(at|tomorrow|tonight|friday|saturday|sunday)\b/,
+      // Enthusiastic responses
+      /(omg yes|yasss|yesss|absolutely|hell yes)/,
+      /(can['t]? wait|so excited|this is gonna be|looking forward)/,
+      /(pick me up|meet me|see you).*(at|tomorrow|tonight|friday|saturday|sunday)/,
       
-      // Planning responses
-      /\b(what should we|where should we|when works|what time)\b.*\b(do|go|meet)\b/,
-      /\b(coffee|dinner|lunch|movie|drinks|park|beach)\b.*\b(sounds|good|perfect|amazing)\b/,
+      // Planning responses - questions that indicate agreement
+      /(what should we|where should we|when works|what time).*(do|go|meet)/,
+      /(coffee|dinner|lunch|movie|drinks|park|beach).*(sounds|good|perfect|amazing)/,
+      /(what did you have in mind|where were you thinking|when works for you)/,
       
       // Time and place commitments
-      /\b(tomorrow|tonight|this weekend|friday|saturday|sunday|next week)\b.*\b(works|perfect|good|sounds good)\b/,
-      /\b(7|8|9|six|seven|eight|nine|ten)\b.*(pm|am|o['']?clock)\b.*\b(works|good|perfect)\b/
+      /(tomorrow|tonight|this weekend|friday|saturday|sunday|next week).*(works|perfect|good|sounds good)/,
+      /(7|8|9|six|seven|eight|nine|ten).*(pm|am|o['']?clock).*(works|good|perfect)/,
+      
+      // Simple enthusiastic agreement (without specific date words)
+      /^(yes|yeah|yep|sure|absolutely|definitely|totally|bet|say less|i['m]? down|let['s]? go)[\s!.]*$/,
+      
+      // Response to "want to go out" or similar
+      /(sounds good|sounds great|sounds fun|sounds perfect|that sounds amazing)/,
+      /(i['d]? love that|i['d]? like that|that would be nice|that would be fun)/,
+      
+      // When they ask follow-up questions after being asked out
+      /(when|where|what time|how about|what about)/,
+      
+      // Additional Gen Z patterns
+      /(that['s]? so cute|you['re]? so sweet|this is so exciting|i['m]? actually excited)/,
+      /(no literally|literally yes|actually yes|fr yes|for real yes)/,
+      /(omg we should|we totally should|we def should|we definitely should)/,
+      
+      // Casual agreement patterns
+      /(alright|okay|ok|cool|nice|sweet).*(let['s]? do it|sounds good|i['m]? in)/,
+      /(why not|sure thing|count me in|i['m]? game|i['m]? up for it)/
     ]
     
     // Check for any matching patterns
-    return dateAgreementPatterns.some(pattern => pattern.test(response))
+    const hasMatch = dateAgreementPatterns.some(pattern => pattern.test(response))
+    console.log('🎯 Date agreement detected:', hasMatch)
+    
+    if (hasMatch) {
+      console.log('✅ SUCCESS! AI agreed to a date with response:', aiResponse)
+    }
+    
+    return hasMatch
   }
 
   // Function to calculate rizz index based on performance
