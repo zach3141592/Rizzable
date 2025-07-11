@@ -165,6 +165,22 @@ function App() {
                              /\b(wanna|want to|would you like to|let['']?s|should we|how about|what about)\b/.test(userMsg)
     console.log('🔍 User asked for date:', userAskedForDate)
     
+    // Check if AI wants to keep talking first (should NOT end game)
+    const wantsToTalkMore = [
+      /(let['']?s talk more|we should talk more|get to know|know each other better)/,
+      /(maybe later|not yet|too soon|too fast|slow down)/,
+      /(first let['']?s|maybe we should|i think we should|how about we)/,
+      /(take it slow|take things slow|see where this goes|see how things go)/,
+      /(chat more|talk a bit more|get to know you better|learn more about)/,
+      /(not ready|maybe after|perhaps after|maybe once we)/,
+      /(rushing|moving fast|taking things fast)/
+    ].some(pattern => pattern.test(response))
+    
+    if (wantsToTalkMore) {
+      console.log('💬 AI wants to talk more first - continuing game')
+      return false
+    }
+    
     // Patterns that indicate date agreement
     const dateAgreementPatterns = [
       // Direct agreement with date words
@@ -245,7 +261,7 @@ function App() {
     console.log('🎯 Date agreement detected:', hasMatch)
     
     if (hasMatch) {
-      console.log('✅ SUCCESS! AI agreed to a date with response:', aiResponse)
+      console.log('✅ SUCCESS! AI agreed to an immediate date with response:', aiResponse)
     }
     
     return hasMatch
