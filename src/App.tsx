@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Send, Info, Phone, Video, RefreshCw } from 'lucide-react'
-import { generateRandomPersona, AIPersona } from './services/personaGenerator'
+import { generateRandomPersona, AIPersona, UserPreferences as PersonaUserPreferences } from './services/personaGenerator'
 import { generateAIResponse, ConversationContext, testOpenAIConnection, generateFirstMessage } from './services/openaiService'
 import LandingPage from './components/LandingPage'
 import './App.css'
@@ -91,7 +91,7 @@ function App() {
       console.log('⚠️ OpenAI API is not working, responses will use fallback system')
     }
     
-    const newPersona = generateRandomPersona()
+    const newPersona = generateRandomPersona(userPreferences || undefined)
     setPersona(newPersona)
     
     // Generate personality-based first message
@@ -282,47 +282,62 @@ function App() {
     })
   }
 
-  // Function to calculate rizz index based on performance (much stricter now)
+  // Function to calculate rizz index based on performance (extremely strict now)
   const calculateRizzIndex = (wordCount: number, timeInSeconds: number, messageCount: number): number => {
     const timeInMinutes = timeInSeconds / 60
+    console.log('🔢 Rizz calculation - Time:', timeInMinutes.toFixed(2), 'min, Messages:', messageCount)
     
-    // Perfect rizz requirements: under 1 minute AND under 5 messages
-    if (timeInMinutes < 1 && messageCount < 5) {
-      return 100 // Legendary rizz
+    // LEGENDARY RIZZ: Under 30 seconds AND under 3 messages
+    if (timeInSeconds < 30 && messageCount <= 2) {
+      console.log('👑 LEGENDARY RIZZ achieved!')
+      return 100
     }
     
-    // Start with base score based on time and message efficiency
-    let rizzScore = 0
+    // ELITE RIZZ: Under 1 minute AND under 4 messages
+    if (timeInMinutes < 1 && messageCount <= 3) {
+      console.log('🔥 ELITE RIZZ achieved!')
+      return 90 + Math.floor(Math.random() * 10) // 90-99
+    }
     
-    // Time-based scoring (much stricter)
-    if (timeInMinutes < 1) rizzScore += 90
-    else if (timeInMinutes < 2) rizzScore += 75
-    else if (timeInMinutes < 3) rizzScore += 60
-    else if (timeInMinutes < 4) rizzScore += 45
-    else if (timeInMinutes < 5) rizzScore += 30
-    else rizzScore += 10 // Anything over 5 minutes is poor rizz
+    // Calculate base score purely on time efficiency (70% of score)
+    let timeScore = 0
+    if (timeInSeconds < 30) timeScore = 95
+    else if (timeInSeconds < 60) timeScore = 85
+    else if (timeInSeconds < 90) timeScore = 70
+    else if (timeInSeconds < 120) timeScore = 55
+    else if (timeInSeconds < 180) timeScore = 40
+    else if (timeInSeconds < 240) timeScore = 25
+    else if (timeInSeconds < 300) timeScore = 10
+    else timeScore = 0 // Over 5 minutes = 0 time score
     
-    // Message count scoring (very strict)
-    if (messageCount <= 3) rizzScore += 10      // Bonus for ultra-efficient
-    else if (messageCount <= 5) rizzScore += 5  // Good efficiency
-    else if (messageCount <= 10) rizzScore += 0 // Average
-    else if (messageCount <= 15) rizzScore -= 10 // Getting wordy
-    else if (messageCount <= 20) rizzScore -= 20 // Too many messages
-    else rizzScore -= 30                         // Way too many messages
+    // Message efficiency score (30% of score)
+    let messageScore = 0
+    if (messageCount <= 2) messageScore = 30
+    else if (messageCount <= 3) messageScore = 25
+    else if (messageCount <= 5) messageScore = 15
+    else if (messageCount <= 8) messageScore = 5
+    else if (messageCount <= 12) messageScore = 0
+    else messageScore = -10 // Penalty for too many messages
     
-    // Word efficiency bonus/penalty
+    // Combine scores
+    let rizzScore = timeScore + messageScore
+    
+    // Severe penalties for inefficiency
+    if (timeInMinutes > 2) rizzScore -= 15
+    if (timeInMinutes > 3) rizzScore -= 20
+    if (messageCount > 5) rizzScore -= 15
+    if (messageCount > 8) rizzScore -= 25
+    
+    // Word efficiency penalty only (no bonus)
     const wordsPerMessage = wordCount / Math.max(messageCount, 1)
-    if (wordsPerMessage <= 8) rizzScore += 5        // Concise
-    else if (wordsPerMessage <= 15) rizzScore += 0  // Average
-    else if (wordsPerMessage <= 25) rizzScore -= 5  // Wordy
-    else rizzScore -= 10                            // Too verbose
+    if (wordsPerMessage > 20) rizzScore -= 10 // Too verbose
+    if (wordsPerMessage > 30) rizzScore -= 15 // Way too verbose
     
-    // Penalty for taking too long or too many messages
-    if (timeInMinutes > 3) rizzScore -= 10
-    if (messageCount > 10) rizzScore -= 10
+    // Final score
+    const finalScore = Math.max(0, Math.min(100, Math.round(rizzScore)))
+    console.log('📊 Final rizz score:', finalScore)
     
-    // Cap the score between 0 and 100
-    return Math.max(0, Math.min(100, Math.round(rizzScore)))
+    return finalScore
   }
 
   const scrollToBottom = () => {
@@ -498,12 +513,13 @@ function App() {
   // Function to get rizz rating text
   const getRizzRating = (score: number): { text: string; emoji: string } => {
     if (score === 0) return { text: "TIMEOUT", emoji: "⏰" }
-    if (score >= 90) return { text: "LEGENDARY RIZZ", emoji: "👑" }
-    if (score >= 80) return { text: "ELITE RIZZ", emoji: "🔥" }
-    if (score >= 70) return { text: "SOLID RIZZ", emoji: "✨" }
+    if (score === 100) return { text: "LEGENDARY RIZZ", emoji: "👑" }
+    if (score >= 90) return { text: "ELITE RIZZ", emoji: "🔥" }
+    if (score >= 75) return { text: "SOLID RIZZ", emoji: "✨" }
     if (score >= 60) return { text: "DECENT RIZZ", emoji: "😎" }
-    if (score >= 50) return { text: "AVERAGE RIZZ", emoji: "😊" }
-    if (score >= 40) return { text: "NEEDS WORK", emoji: "😅" }
+    if (score >= 45) return { text: "AVERAGE RIZZ", emoji: "😊" }
+    if (score >= 30) return { text: "WEAK RIZZ", emoji: "😅" }
+    if (score >= 15) return { text: "POOR RIZZ", emoji: "😬" }
     return { text: "RIZZ-LESS", emoji: "💀" }
   }
 

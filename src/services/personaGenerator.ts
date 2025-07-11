@@ -8,7 +8,27 @@ export interface AIPersona {
   conversationStyle: string;
 }
 
-const NAMES = [
+const FEMININE_NAMES = [
+  "Emma", "Olivia", "Ava", "Sophia", "Isabella", "Mia", "Charlotte", "Amelia",
+  "Harper", "Evelyn", "Abigail", "Emily", "Ella", "Elizabeth", "Camila", "Luna",
+  "Sofia", "Avery", "Mila", "Aria", "Scarlett", "Penelope", "Layla", "Chloe",
+  "Victoria", "Madison", "Eleanor", "Grace", "Nora", "Riley", "Zoey", "Hannah",
+  "Hazel", "Lily", "Ellie", "Violet", "Lillian", "Zoe", "Stella", "Aurora",
+  "Natalie", "Emilia", "Everly", "Leah", "Aubrey", "Willow", "Addison", "Lucy",
+  "Audrey", "Bella", "Nova", "Brooklyn", "Paisley", "Savannah", "Claire", "Skylar"
+];
+
+const MASCULINE_NAMES = [
+  "Liam", "Noah", "Oliver", "Elijah", "Lucas", "Mason", "Logan", "Alexander",
+  "Ethan", "Jacob", "Michael", "Daniel", "Henry", "Jackson", "Sebastian", "Aiden",
+  "Matthew", "Samuel", "David", "Joseph", "Carter", "Owen", "Wyatt", "John",
+  "Jack", "Luke", "Jayden", "Dylan", "Grayson", "Levi", "Isaac", "Gabriel",
+  "Julian", "Mateo", "Anthony", "Jaxon", "Lincoln", "Joshua", "Christopher", "Andrew",
+  "Theodore", "Caleb", "Ryan", "Asher", "Nathan", "Thomas", "Leo", "Isaiah",
+  "Charles", "Josiah", "Hudson", "Christian", "Hunter", "Connor", "Eli", "Ezra"
+];
+
+const NEUTRAL_NAMES = [
   "Alex", "Jordan", "Riley", "Casey", "Morgan", "Avery", "Sage", "River",
   "Phoenix", "Rowan", "Blake", "Cameron", "Emery", "Hayden", "Peyton",
   "Quinn", "Reese", "Skylar", "Taylor", "Drew", "Finley", "Kendall",
@@ -79,13 +99,55 @@ function getRandomItems<T>(array: T[], count: number): T[] {
   return shuffled.slice(0, count);
 }
 
-export function generateRandomPersona(): AIPersona {
-  const name = getRandomItem(NAMES);
+export interface UserPreferences {
+  name: string;
+  ageRange: {
+    min: number;
+    max: number;
+  };
+  genderIdentity: string;
+  sexualOrientation: string;
+}
+
+function getNameArrayForPreferences(userPreferences: UserPreferences): string[] {
+  const { genderIdentity, sexualOrientation } = userPreferences;
+  
+  // If user is interested in women
+  if (
+    (genderIdentity === 'Man' && sexualOrientation === 'Straight') ||
+    (genderIdentity === 'Woman' && (sexualOrientation === 'Lesbian' || sexualOrientation === 'Gay')) ||
+    (sexualOrientation === 'Bisexual' && Math.random() < 0.5) ||
+    (sexualOrientation === 'Pansexual' && Math.random() < 0.4)
+  ) {
+    return FEMININE_NAMES;
+  }
+  
+  // If user is interested in men
+  if (
+    (genderIdentity === 'Woman' && sexualOrientation === 'Straight') ||
+    (genderIdentity === 'Man' && (sexualOrientation === 'Gay' || sexualOrientation === 'Lesbian')) ||
+    (sexualOrientation === 'Bisexual' && Math.random() < 0.5) ||
+    (sexualOrientation === 'Pansexual' && Math.random() < 0.4)
+  ) {
+    return MASCULINE_NAMES;
+  }
+  
+  // Default to neutral names for non-binary, other orientations, etc.
+  return NEUTRAL_NAMES;
+}
+
+export function generateRandomPersona(userPreferences?: UserPreferences): AIPersona {
+  const nameArray = userPreferences ? getNameArrayForPreferences(userPreferences) : NEUTRAL_NAMES;
+  const name = getRandomItem(nameArray);
   const personality = getRandomItem(PERSONALITIES);
   const interests = getRandomItems(INTERESTS, 3 + Math.floor(Math.random() * 3));
   const conversationStyle = getRandomItem(CONVERSATION_STYLES);
   const avatar = getRandomItem(AVATARS);
-  const age = 20 + Math.floor(Math.random() * 6); // Age between 20-25 for Gen Z
+  
+  // Use user's preferred age range if available
+  const minAge = userPreferences?.ageRange.min || 20;
+  const maxAge = userPreferences?.ageRange.max || 25;
+  const age = minAge + Math.floor(Math.random() * (maxAge - minAge + 1));
 
   // Generate bio based on personality and interests
   const bio = generateBio(personality, interests, age);
