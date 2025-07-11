@@ -153,9 +153,16 @@ function App() {
   }
 
   // Function to detect if AI has agreed to go on a date
-  const detectDateAgreement = (aiResponse: string): boolean => {
+  const detectDateAgreement = (aiResponse: string, userMessage?: string): boolean => {
     const response = aiResponse.toLowerCase()
+    const userMsg = userMessage?.toLowerCase() || ''
+    
     console.log('🔍 Checking for date agreement in:', response)
+    console.log('🔍 User message context:', userMsg)
+    
+    // Check if user message contains date invitation words
+    const userAskedForDate = /\b(dinner|lunch|coffee|drinks|movie|date|go out|hang out|meet up|wanna|want to|would you like to)\b/.test(userMsg)
+    console.log('🔍 User asked for date:', userAskedForDate)
     
     // Patterns that indicate date agreement
     const dateAgreementPatterns = [
@@ -183,9 +190,6 @@ function App() {
       /(tomorrow|tonight|this weekend|friday|saturday|sunday|next week).*(works|perfect|good|sounds good)/,
       /(7|8|9|six|seven|eight|nine|ten).*(pm|am|o['']?clock).*(works|good|perfect)/,
       
-      // Simple enthusiastic agreement (without specific date words)
-      /^(yes|yeah|yep|sure|absolutely|definitely|totally|bet|say less|i['m]? down|let['s]? go)[\s!.]*$/,
-      
       // Response to "want to go out" or similar
       /(sounds good|sounds great|sounds fun|sounds perfect|that sounds amazing)/,
       /(i['d]? love that|i['d]? like that|that would be nice|that would be fun)/,
@@ -203,8 +207,41 @@ function App() {
       /(why not|sure thing|count me in|i['m]? game|i['m]? up for it)/
     ]
     
-    // Check for any matching patterns
-    const hasMatch = dateAgreementPatterns.some(pattern => pattern.test(response))
+    // Context-aware simple agreement patterns (only if user asked for a date)
+    const contextualAgreementPatterns = [
+      // Simple yes/agreement responses (when user asked for date)
+      /^(yes|yeah|yep|sure|absolutely|definitely|totally)/,
+      /^(bet|say less|i['m]? down|let['s]? go)/,
+      /(yes|yeah|yep|sure|absolutely|definitely|totally).*(!|\.|\?|$)/,
+      /(bet|say less|i['m]? down|let['s]? go).*(!|\.|\?|$)/,
+      
+      // Positive responses with emojis or extra words
+      /(yes|yeah|yep|sure|absolutely|definitely|totally).*(so|really|totally|actually|fr|for real)/,
+      /(yes|yeah|yep|sure).*(sounds|that|would|could|should)/,
+      /(sounds|that).*(good|great|fun|perfect|amazing|nice|cool)/,
+      
+      // Enthusiastic agreement (shorter responses)
+      /(omg|yasss|yesss|definitely|absolutely|totally|hell yes)/,
+      /(so down|i['m]? down|let['s]? do it|count me in)/,
+      /(that would be|that sounds|i['d]? love|i['d]? like)/,
+      
+      // Gen Z casual agreements
+      /(fr|for real|no cap|period|periodt|bestie|ngl|not gonna lie)/,
+      /(fire|lit|slaps|hits different|a vibe|the vibe|main character)/,
+      /(lowkey|highkey|literally|actually|so|really|super)/,
+    ]
+    
+    // Check standard patterns first
+    let hasMatch = dateAgreementPatterns.some(pattern => pattern.test(response))
+    
+    // If no match yet, check contextual patterns (only if user asked for date)
+    if (!hasMatch && userAskedForDate) {
+      hasMatch = contextualAgreementPatterns.some(pattern => pattern.test(response))
+      if (hasMatch) {
+        console.log('🎯 Contextual agreement detected based on user invitation!')
+      }
+    }
+    
     console.log('🎯 Date agreement detected:', hasMatch)
     
     if (hasMatch) {
@@ -357,7 +394,7 @@ function App() {
         setIsTyping(false)
 
         // Check if AI agreed to a date
-        if (detectDateAgreement(aiResponseText)) {
+        if (detectDateAgreement(aiResponseText, userMessage.text)) {
           // Calculate final metrics
           const currentTime = new Date()
           const totalTime = gameMetrics.startTime 
@@ -402,7 +439,7 @@ function App() {
           setIsTyping(false)
 
           // Check fallback response for date agreement (unlikely but just in case)
-          if (detectDateAgreement(fallbackResponseText)) {
+          if (detectDateAgreement(fallbackResponseText, userMessage.text)) {
             const currentTime = new Date()
             const totalTime = gameMetrics.startTime 
               ? Math.floor((currentTime.getTime() - gameMetrics.startTime.getTime()) / 1000)
