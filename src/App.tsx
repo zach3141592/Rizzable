@@ -173,7 +173,10 @@ function App() {
       /(take it slow|take things slow|see where this goes|see how things go)/,
       /(chat more|talk a bit more|get to know you better|learn more about)/,
       /(not ready|maybe after|perhaps after|maybe once we)/,
-      /(rushing|moving fast|taking things fast)/
+      /(rushing|moving fast|taking things fast)/,
+      /(i barely know you|we just met|don['']?t really know each other)/,
+      /(let['']?s see|maybe someday|perhaps|potentially|we['']?ll see)/,
+      /(bit forward|kinda forward|pretty forward|moving quick)/
     ].some(pattern => pattern.test(response))
     
     if (wantsToTalkMore) {
@@ -181,70 +184,49 @@ function App() {
       return false
     }
     
-    // Patterns that indicate date agreement
+    // Patterns that indicate date agreement (VERY SPECIFIC ONLY)
     const dateAgreementPatterns = [
-      // Direct agreement with date words
-      /(yes|yeah|yep|sure|absolutely|definitely|totally).*(date|go out|hang out|meet up)/,
-      /(i['d]? love to|i['d]? like to|sounds good|sounds great|let['s]? do it)/,
-      /(when|where|what time|tomorrow|tonight|weekend|this week).*(date|meet|hang out)/,
+      // Direct agreement with date words (must include date activity)
+      /(yes|yeah|yep|sure|absolutely|definitely|totally).*(dinner|lunch|coffee|drinks|movie|date|go out|hang out|meet up)/,
+      /(i['d]? love to (go|have|get)|i['d]? like to (go|have|get)).*(dinner|lunch|coffee|drinks|movie)/,
+      /(when|where|what time).*(dinner|lunch|coffee|drinks|movie|date|meet|hang out)/,
       
-      // Gen Z specific agreement patterns
-      /(bet|say less|i['m]? down|let['s]? go|fr\?|for real\?|no cap)/,
-      /(that sounds fire|that['s]? a vibe|i['m]? so down|period|periodt)/,
-      /(we should totally|let['s]? definitely|i['m]? literally so excited)/,
-      
-      // Enthusiastic responses
-      /(omg yes|yasss|yesss|absolutely|hell yes)/,
-      /(can['t]? wait|so excited|this is gonna be|looking forward)/,
-      /(pick me up|meet me|see you).*(at|tomorrow|tonight|friday|saturday|sunday)/,
-      
-      // Planning responses - questions that indicate agreement
-      /(what should we|where should we|when works|what time).*(do|go|meet)/,
-      /(coffee|dinner|lunch|movie|drinks|park|beach).*(sounds|good|perfect|amazing)/,
+      // Planning responses with specific activities
+      /(what should we|where should we|when works|what time).*(do|go|meet|eat|drink)/,
+      /(coffee|dinner|lunch|movie|drinks).*(sounds (good|great|perfect|amazing)|would be (nice|fun|great))/,
       /(what did you have in mind|where were you thinking|when works for you)/,
       
-      // Time and place commitments
-      /(tomorrow|tonight|this weekend|friday|saturday|sunday|next week).*(works|perfect|good|sounds good)/,
-      /(7|8|9|six|seven|eight|nine|ten).*(pm|am|o['']?clock).*(works|good|perfect)/,
+      // Time and place commitments (must reference specific plans)
+      /(tomorrow|tonight|this weekend|friday|saturday|sunday|next week).*(dinner|lunch|coffee|drinks|movie|meet)/,
+      /(7|8|9|six|seven|eight|nine|ten).*(pm|am|o['']?clock).*(dinner|lunch|coffee|drinks|movie)/,
       
-      // Response to "want to go out" or similar
-      /(sounds good|sounds great|sounds fun|sounds perfect|that sounds amazing)/,
-      /(i['d]? love that|i['d]? like that|that would be nice|that would be fun)/,
+      // Enthusiastic responses to specific invitations
+      /(omg yes|yasss|yesss|hell yes).*(dinner|lunch|coffee|drinks|movie)/,
+      /(can['t]? wait|so excited|this is gonna be|looking forward).*(dinner|lunch|coffee|drinks|movie|date)/,
+      /(pick me up|meet me|see you).*(dinner|lunch|coffee|drinks|movie)/,
       
-      // When they ask follow-up questions after being asked out (more specific)
+      // Very specific agreement phrases only
+      /(let['s]? do it|count me in|i['m]? game|i['m]? up for it|why not)/,
+      /(sure thing|absolutely|definitely|sounds like a plan)/,
+      
+      // When they ask follow-up questions (very specific)
       /^(when|where|what time)\??\s*$/,
       /(when (do you|would you|should we)|where (do you|would you|should we)|what time (do you|would you|should we))/,
-      
-      // Additional Gen Z patterns
-      /(that['s]? so cute|you['re]? so sweet|this is so exciting|i['m]? actually excited)/,
-      /(no literally|literally yes|actually yes|fr yes|for real yes)/,
-      /(omg we should|we totally should|we def should|we definitely should)/,
-      
-      // Casual agreement patterns
-      /(alright|okay|ok|cool|nice|sweet).*(let['s]? do it|sounds good|i['m]? in)/,
-      /(why not|sure thing|count me in|i['m]? game|i['m]? up for it)/
     ]
     
-    // Context-aware simple agreement patterns (only if user asked for a date)
+    // Context-aware simple agreement patterns (ONLY if user explicitly asked for a date)
     const contextualAgreementPatterns = [
-      // Simple yes/agreement responses (when user asked for date)
-      /^(yes|yeah|yep|sure|absolutely|definitely|totally)/,
-      /^(bet|say less|i['m]? down|let['s]? go)/,
-      /(yes|yeah|yep|sure|absolutely|definitely|totally).*(!|\.|\?|$)/,
-      /(bet|say less|i['m]? down|let['s]? go).*(!|\.|\?|$)/,
+      // Very simple agreement responses (ONLY when user asked for specific date)
+      /^(yes|yeah|yep|sure|absolutely|definitely|totally)[\s!.]*$/,
+      /^(bet|say less|i['m]? down|let['s]? go)[\s!.]*$/,
       
-      // Positive responses to date invitations (more specific)
-      /(yes|yeah|yep|sure|absolutely|definitely|totally).*(sounds good|sounds great|sounds fun|sounds perfect)/,
-      /(that sounds|that would be).*(good|great|fun|perfect|amazing|nice|cool)/,
+      // Enthusiastic short responses
+      /^(omg yes|yasss|yesss|hell yes)[\s!.]*$/,
+      /^(i['m]? so down|so down|count me in)[\s!.]*$/,
       
-      // Enthusiastic agreement to date invitations
-      /(omg yes|yasss|yesss|hell yes)/,
-      /(so down|i['m]? down|let['s]? do it|count me in)/,
-      /(that would be (fun|nice|great|perfect|amazing)|i['d]? love (to|that)|i['d]? like (to|that))/,
-      
-      // Gen Z casual agreements (more specific to date context)
-      /(fr that sounds|for real that sounds|no cap that sounds|period let['s]? do it)/,
-      /(that['s]? fire|that['s]? lit|that['s]? a vibe).*(let['s]?|we should|sounds good)/,
+      // Only "that sounds" when followed by positive + agreement
+      /(that sounds|that would be).*(good|great|fun|perfect|amazing).*(let['s]?|we should|i['m]? in)/,
+      /(i['d]? love to|i['d]? like to).*(go|do that|that)/,
     ]
     
     // Check standard patterns first
