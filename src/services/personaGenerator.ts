@@ -112,6 +112,8 @@ export interface UserPreferences {
 function getNameArrayForPreferences(userPreferences: UserPreferences): string[] {
   const { genderIdentity, sexualOrientation } = userPreferences;
   
+  console.log('🔍 Name selection - Gender:', genderIdentity, 'Orientation:', sexualOrientation);
+  
   // If user is interested in women
   if (
     (genderIdentity === 'Man' && sexualOrientation === 'Straight') ||
@@ -119,6 +121,7 @@ function getNameArrayForPreferences(userPreferences: UserPreferences): string[] 
     (sexualOrientation === 'Bisexual' && Math.random() < 0.5) ||
     (sexualOrientation === 'Pansexual' && Math.random() < 0.4)
   ) {
+    console.log('👩 Selecting feminine names');
     return FEMININE_NAMES;
   }
   
@@ -129,10 +132,12 @@ function getNameArrayForPreferences(userPreferences: UserPreferences): string[] 
     (sexualOrientation === 'Bisexual' && Math.random() < 0.5) ||
     (sexualOrientation === 'Pansexual' && Math.random() < 0.4)
   ) {
+    console.log('👨 Selecting masculine names');
     return MASCULINE_NAMES;
   }
   
   // Default to neutral names for non-binary, other orientations, etc.
+  console.log('🔀 Selecting neutral names (default)');
   return NEUTRAL_NAMES;
 }
 
