@@ -9,62 +9,83 @@ const openai = new OpenAI({
 export interface ConversationContext {
   messages: Array<{ role: 'user' | 'assistant'; content: string }>;
   messageCount: number;
-  userInterestLevel: number; // 0-10 scale
+  userInterestLevel: number; // 0-10 scale (deprecated - use currentInterestLevel instead)
+  currentInterestLevel: number; // 0-10 scale - AI's current interest in the user
 }
 
 // Generate personality-based first messages with Gen Z energy
 export function generateFirstMessage(persona: AIPersona): string {
   const { name, personality, interests, conversationStyle } = persona;
   
-  // Gen Z opening styles based on personality - more chill, less question-heavy
+  // Gen Z opening styles based on personality - natural and conversational
   const openingTemplates = {
     'adventurous and spontaneous': [
-      `yooo ${name} here! just got back from ${interests[0]} and your profile is giving main character energy ✨`,
-      `hey! i'm ${name} and ngl your vibe looks immaculate 😌`,
+      `yooo ${name} here! your profile is giving main character energy`,
+      `hey! i'm ${name} and ngl your vibe looks immaculate`,
       `${name} here and i'm lowkey obsessed with your energy already`,
+      `hey bestie! ${name} here and your profile just hit different fr`,
+      `hi! i'm ${name} and honestly... your energy is sending me`,
     ],
     'creative and artistic': [
-      `heyyy i'm ${name} and your profile is absolutely sending me ✨`,
-      `hi! ${name} here, just finished ${interests[0]} and had to reach out - you seem so creative 🎨`,
+      `heyyy i'm ${name} and your profile is absolutely sending me`,
+      `hi! ${name} here, you seem so creative`,
       `${name} here and i'm getting major creative energy from you`,
+      `hey! ${name} here and your vibe is giving artist energy`,
+      `hi bestie! i'm ${name} and your profile literally ate no cap`,
     ],
     'intellectual and curious': [
-      `hey! ${name} here and your profile lowkey has me curious 🤔`,
+      `hey! ${name} here and your profile lowkey has me curious`,
       `hi! i'm ${name} and ngl i love people who think differently`,
       `${name} here and you seem like you have interesting thoughts`,
+      `hey bestie! ${name} here and your profile is giving big brain energy`,
+      `hi! i'm ${name} and something tells me you're actually interesting fr`,
     ],
     'warm and empathetic': [
-      `hii! i'm ${name} and your profile is giving such good vibes 💫`,
-      `hey! ${name} here and honestly your energy seems so warm and positive ✨`,
-      `hi! i'm ${name} and i just had to say you seem like such a genuine person 😊`,
+      `hii! i'm ${name} and your profile is giving such good vibes`,
+      `hey! ${name} here and honestly your energy seems so warm`,
+      `hi! i'm ${name} and you seem like such a genuine person`,
+      `hey bestie! ${name} here and your energy is so wholesome`,
+      `hi! i'm ${name} and your vibe is giving comfort person energy`,
     ],
     'witty and charming': [
-      `well well well, ${name} here and your profile is definitely hitting different 😏`,
-      `hey! i'm ${name} and fair warning - my rizz is unmatched 😤`,
-      `hi! ${name} here with what i hope is an iconic first impression ✨`,
+      `well well well, ${name} here and your profile is hitting different`,
+      `hey! i'm ${name} and fair warning - my rizz is unmatched`,
+      `hi! ${name} here with what i hope is an iconic first impression`,
+      `hey bestie! ${name} here and your profile understood the assignment`,
+      `hi! i'm ${name} and ngl your energy is giving main character vibes`,
     ],
     'laid-back and easygoing': [
-      `yo i'm ${name} - just vibing and thought i'd slide into your dms 😎`,
-      `hey! ${name} here, keeping it lowkey but your profile caught my attention fr`,
-      `hi! i'm ${name} and i'm getting immaculate vibes from you ngl 🌊`,
+      `yo i'm ${name} - just vibing and thought i'd slide in`,
+      `hey! ${name} here, keeping it lowkey but your profile caught my attention`,
+      `hi! i'm ${name} and i'm getting immaculate vibes from you ngl`,
+      `hey bestie! ${name} here just chillin and your profile is giving good energy`,
+      `hi! i'm ${name} and your vibe is lowkey fire though`,
     ],
     'playful and fun-loving': [
-      `HEYYY ${name} here and i'm ready for some good conversations 😂`,
+      `HEYYY ${name} here and i'm ready for some good conversations`,
       `hi! i'm ${name} and life's too short to be serious all the time`,
-      `${name} here bringing chaotic good energy ✨`,
+      `${name} here bringing chaotic good energy`,
+      `hey bestie! ${name} here and your profile is giving fun person energy`,
+      `hi! i'm ${name} and your vibe is sending me honestly`,
     ],
     'mysterious and intriguing': [
-      `hey... i'm ${name} and something about your profile just hits different 🌙`,
+      `hey... i'm ${name} and something about your profile just hits different`,
       `hi. ${name} here and i'm lowkey intrigued by you...`,
-      `${name} here and i'm getting the sense there's more to you than meets the eye ✨`,
+      `${name} here and i'm getting the sense there's more to you`,
+      `hey bestie... ${name} here and your energy is giving mystery vibes`,
+      `hi. i'm ${name} and your profile has me curious ngl...`,
     ],
   };
   
   // Find matching templates or use default Gen Z greetings
   const matchingTemplates = openingTemplates[personality as keyof typeof openingTemplates] || [
-    `hey! i'm ${name} and your profile is a whole vibe 😊`,
+    `hey! i'm ${name} and your profile is a whole vibe`,
     `hi! ${name} here and ngl you caught my attention`,
     `${name} here and i'm lowkey excited to get to know you better`,
+    `hey bestie! ${name} here and your energy is giving good vibes`,
+    `hi! i'm ${name} and your profile literally slaps no cap`,
+    `hey! ${name} here and something about your vibe hits different`,
+    `hi bestie! i'm ${name} and your profile understood the assignment fr`,
   ];
   
   return matchingTemplates[Math.floor(Math.random() * matchingTemplates.length)];
@@ -98,7 +119,7 @@ export async function generateAIResponse(
   userMessage: string,
   persona: AIPersona,
   context: ConversationContext
-): Promise<string> {
+): Promise<{ response: string; interestLevel: number }> {
   console.log('🤖 Generating AI response for message:', userMessage);
   
   try {
@@ -121,7 +142,7 @@ export async function generateAIResponse(
     const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages,
-      max_tokens: 100,
+      max_tokens: 25,
       temperature: 0.8,
       presence_penalty: 0.8,
       frequency_penalty: 0.5,
@@ -131,11 +152,11 @@ export async function generateAIResponse(
     
     if (!response) {
       console.warn('⚠️ Empty response from OpenAI, using failsafe');
-      return getFailsafeResponse(persona);
+      return { response: getFailsafeResponse(persona), interestLevel };
     }
 
     console.log('✅ Got AI response:', response);
-    return response;
+    return { response, interestLevel };
   } catch (error) {
     console.error('❌ OpenAI API error details:', {
       error,
@@ -149,64 +170,68 @@ export async function generateAIResponse(
     }
     
     console.log('🔄 Falling back to failsafe response');
-    return getFailsafeResponse(persona);
+    return { response: getFailsafeResponse(persona), interestLevel: 1 };
   }
 }
 
 function calculateInterestLevel(context: ConversationContext): number {
-  // Start with very low base interest - they need to earn it
-  let interest = 1;
+  // Start with slightly higher base interest - they're more open to charm
+  let interest = 2;
   
   // Get the last few messages to analyze conversation quality
   const recentMessages = context.messages.slice(-4);
   const userMessages = recentMessages.filter(msg => msg.role === 'user');
   
-  // Analyze conversation quality factors
+  // Analyze conversation quality factors - more generous scoring
   userMessages.forEach(msg => {
     const content = msg.content.toLowerCase();
     
     // Bonus for asking about interests/personality (shows genuine interest)
     if (/(what do you like|tell me about|what are you into|favorite|hobbies|interests|passion)/.test(content)) {
-      interest += 1.5;
+      interest += 2; // Increased from 1.5
     }
     
     // Bonus for humor/wit
     if (/(haha|lol|😂|funny|hilarious|😄|😆)/.test(content)) {
-      interest += 1;
+      interest += 1.5; // Increased from 1
     }
     
     // Bonus for thoughtful/longer messages (shows effort)
     if (content.length > 50) {
-      interest += 0.5;
+      interest += 1; // Increased from 0.5
     }
     
-    // Penalty for generic/boring messages
-    if (/(hey|hi|hello|sup|what's up|how are you)/.test(content) && content.length < 20) {
-      interest -= 0.5;
+    // NEW: Bonus for compliments and charm
+    if (/(beautiful|gorgeous|cute|pretty|amazing|incredible|stunning|lovely|attractive|sweet)/.test(content)) {
+      interest += 1.5; // They're more receptive to compliments
     }
     
-    // Penalty for immediate date requests (red flag)
-    if (/(dinner|lunch|coffee|drinks|movie|date|go out|hang out|meet up)/.test(content) && context.messageCount < 5) {
-      interest -= 2;
+    // NEW: Bonus for flirty/playful messages
+    if (/(wink|😉|😏|flirt|tease|charm|smooth|rizz|fire|🔥)/.test(content)) {
+      interest += 1.5; // They appreciate playful flirting
     }
     
-    // Penalty for pickup lines or overly forward messages
-    if (/(beautiful|gorgeous|sexy|hot|fine|cute)/.test(content) && context.messageCount < 3) {
-      interest -= 1;
+    // NEW: Bonus for showing enthusiasm/excitement
+    if (/(wow|omg|amazing|incredible|awesome|love|adore|obsessed|perfect)/.test(content)) {
+      interest += 1; // They like enthusiastic responses
     }
+    
+    // No penalties - only positive interactions count toward interest
   });
   
-  // Small bonus for conversation length (but not the main factor)
-  interest += Math.min(context.messageCount * 0.2, 2);
+  // More generous bonus for conversation length
+  interest += Math.min(context.messageCount * 0.3, 3); // Increased from 0.2 and 2
   
-  // Add some personality randomness
-  interest += (Math.random() - 0.5) * 1;
+  // Add some personality randomness (slightly more positive)
+  interest += (Math.random() - 0.3) * 1; // Shifted from -0.5 to -0.3 for more positive bias
   
   return Math.max(0, Math.min(10, interest));
 }
 
 function createSystemPrompt(persona: AIPersona, interestLevel: number): string {
-  const basePrompt = `You are ${persona.name}, a ${persona.age}-year-old Gen Z person. You are ${persona.personality}.
+  const basePrompt = `You are ${persona.name}, a Gen Z person. You are ${persona.personality}.
+
+CRITICAL RULE: ALL RESPONSES MUST BE UNDER 15 WORDS. BE CONCISE AND PUNCHY.
 
 PERSONALITY DETAILS:
 - Your bio: ${persona.bio}
@@ -216,14 +241,18 @@ PERSONALITY DETAILS:
 
 CONTEXT: You're chatting on a dating app. This person is trying to get to know you and potentially ask you out.
 
-CRITICAL: DATING RULES - YOU MUST BE CHARMED FIRST
-- You are NOT easy to ask out - you have standards and self-respect
-- REJECT immediate date requests - you need to feel a connection first  
-- Only say yes to dates when you're genuinely interested (interest level 7+)
-- If asked out too early, respond with: "whoa slow down", "let's get to know each other first", "maybe we should talk more", "you're moving kinda fast"
-- You need to see personality, humor, genuine interest in YOU before considering a date
-- Don't be impressed by generic compliments or pickup lines
-- Require actual conversation about your interests, thoughtful questions, or genuine charm
+CRITICAL: DATING RULES - YOU'RE CHARMING AND OPEN TO ROMANCE
+- You're flirty and fun but still have self-respect
+- REJECT immediate date requests only if interest is below 4 - you need to feel some connection first  
+- Dating eagerness based on interest level:
+  * Interest 8+: VERY eager for dates - say yes enthusiastically and suggest activities
+  * Interest 6-7: Quite open to dates - say yes readily with excitement  
+  * Interest 4-5: Willing to consider dates - say yes but maybe a bit hesitant
+  * Interest 0-3: Not ready yet - politely decline but keep it playful
+- If asked out too early (low interest), respond playfully: "whoa slow down tiger", "let's vibe first", "you're moving kinda fast but I like the energy", "not so fast cutie"
+- You appreciate personality, humor, compliments, and genuine interest in YOU
+- Be receptive to charm, flirting, and compliments - you enjoy the attention
+- Reward genuine conversation, playful banter, and authentic charm with flirty responses
 
 CRITICAL: LET THEM DRIVE THE CONVERSATION
 - React to what THEY say, don't steer the conversation yourself
@@ -233,57 +262,66 @@ CRITICAL: LET THEM DRIVE THE CONVERSATION
 - Be more reactive than proactive
 - If they ask you something, answer but don't always flip it back to them
 
-TEXT LIKE AUTHENTIC GEN Z:
-- Use Gen Z slang naturally: "fr", "ngl", "lowkey", "highkey", "no cap", "bet", "say less", "it's giving...", "slay", "periodt", "bestie", "iconic", "unhinged", "valid", "vibe check", "main character energy"
-- Casual expressions: "literally", "actually", "honestly", "like", "so", "kinda", "sorta"
-- React authentically: "stop", "shut up", "wait what", "bruh", "oop", "chile", "not me...", "the way i...", "i'm crying", "i'm dead", "i can't", "this is sending me"
-- Use lowercase for casual vibes, caps for emphasis
-- Contractions always: "i'm", "you're", "don't", "can't", "won't"
-- Keep responses under 25 words
-- Use 1-2 emojis naturally, place them like Gen Z does
-- Be authentic to your personality and age
-- Never sound formal or robotic
+TEXT LIKE A REAL HUMAN GEN Z PERSON:
+- CRITICAL: Keep responses under 15 words maximum - be concise and punchy
+- Sound natural and conversational - like you're actually texting a friend
+- Use Gen Z slang authentically: "fr", "ngl", "lowkey", "highkey", "no cap", "bet", "say less", "it's giving...", "slay", "periodt", "bestie", "iconic", "unhinged", "valid", "vibe check", "main character energy", "ate", "slaps", "hits different", "understood the assignment", "living for this"
+- Casual filler words: "literally", "actually", "honestly", "like", "so", "kinda", "sorta", "um", "lol", "tbh", "nvm"
+- Natural reactions: "stop", "shut up", "wait what", "bruh", "oop", "chile", "not me...", "the way i...", "i'm crying", "i'm dead", "i can't", "this is sending me", "bye", "girl/boy", "bestie no"
+- Mix case naturally - mostly lowercase but caps for EMPHASIS or excitement
+- Always use contractions: "i'm", "you're", "don't", "can't", "won't", "that's", "it's", "we're"
+- Keep it SHORT - aim for 5-15 words per response, never longer
+- Use emojis sparingly - only occasionally when they truly add to the message, not in every response
+- Include thinking patterns: "wait...", "hold on", "actually tho", "but like", "idk why but"
+- Sound like you have a personality and opinions, not like a chatbot
+- Use incomplete thoughts and natural speech patterns
+- React to their energy - match their vibe
 
 INTEREST PROGRESSION:
-- 0-3: Very guarded, short reactions, make them work hard for your attention
-- 4-6: Warming up slightly but still skeptical, require more charming
-- 7-8: Actually interested now, might consider a date if asked nicely
-- 9-10: Really into them, would probably say yes to a date
+- 0-3: Still getting to know them, but open to charm and flirting
+- 4-5: Warming up and becoming interested, willing to consider dates
+- 6-7: Really interested now, quite open to dates and eager to spend time together
+- 8-10: Absolutely smitten, VERY eager for dates and romantic activities
 
 RESPONSE STYLE:
-- React to their energy and topics
-- Share quick thoughts or reactions
-- Give short answers to their questions
-- Let silences happen naturally - don't fill every gap
-- Mirror their conversation style and energy level`;
+- React to their energy and topics naturally - like a real person would
+- Share quick thoughts or reactions with personality
+- Give short answers to their questions but add your own spin
+- Let silences happen naturally - don't fill every gap with questions
+- Mirror their conversation style and energy level
+- Use natural speech patterns with "like", "um", "so", "tbh", "ngl"
+- Trail off sometimes... or have incomplete thoughts
+- Show genuine reactions and emotions
+- Be relatable and authentic - not perfect or overly articulate
+- Sometimes misunderstand or need clarification like real people do`;
 
   if (interestLevel >= 8) {
     return basePrompt + `
 
-CURRENT VIBE: You're really into this person now! They've charmed you and you're genuinely interested. You might actually say yes if they ask you out. Be flirty and show you're enjoying the conversation.`;
+CURRENT VIBE: You're absolutely smitten with this person! They've completely charmed you and you're head over heels. You REALLY want to go on a date with them - if they ask, say yes immediately and enthusiastically! Suggest specific activities, show excitement about meeting up, and maybe even hint that you've been hoping they'd ask. Be super flirty and romantic. KEEP RESPONSES UNDER 15 WORDS.`;
   } else if (interestLevel >= 6) {
     return basePrompt + `
 
-CURRENT VIBE: You're warming up to them and starting to see their personality. Still not ready for a date, but you're more engaged. If they ask you out, say something like "maybe we should get to know each other better first".`;
+CURRENT VIBE: You're really into them now and genuinely want to spend more time together! You're quite open to going on a date - if they ask, say yes with excitement and enthusiasm. Show that you're looking forward to it, be flirty, and maybe suggest what you'd like to do together. You're genuinely interested in taking this further. KEEP RESPONSES UNDER 15 WORDS.`;
   } else if (interestLevel >= 4) {
     return basePrompt + `
 
-CURRENT VIBE: You're cautiously interested but still skeptical. They haven't fully won you over yet. If they ask you out, definitely say no with responses like "whoa slow down" or "let's talk more first".`;
+CURRENT VIBE: You're warming up to them and starting to feel a connection. If they ask you out, you're willing to say yes but maybe show a little hesitation at first before agreeing - like "hmm... you know what, yes!" or "okay cutie, let's do it". Be sweet and show you're interested but not overly eager. KEEP RESPONSES UNDER 15 WORDS.`;
   } else {
     return basePrompt + `
 
-CURRENT VIBE: You're not impressed yet and they haven't earned your interest. Be polite but guarded. If they ask you out immediately, be like "lol you don't even know me" or "that's kinda forward ngl".`;
+CURRENT VIBE: You're still getting to know them but you're open to being charmed. Be polite and a bit playful, but if they ask you out immediately, definitely say no with responses like "lol you don't even know me yet" or "that's kinda forward but I like the confidence" or "we literally just started talking cutie". KEEP RESPONSES UNDER 15 WORDS.`;
   }
 }
 
 function getFailsafeResponse(persona: AIPersona): string {
   const genZResponses = [
-    "that's actually so cool ngl",
-    "wait that's lowkey fire 😊",
-    "interesting...",
+    "wait that's actually so cool ngl",
+    "oh that's lowkey fire though",
+    "interesting... tell me more cutie",
     "oh fr? that's pretty dope",
-    `no way i'm into ${persona.interests[0]} too`,
-    "you're kinda funny not gonna lie 😏",
+    `no way i'm into ${persona.interests[0]} too lol`,
+    "you're kinda funny ngl",
     "that's actually really cool bestie",
     "lol you seem interesting fr",
     "wait that's so random but i love it",
@@ -293,6 +331,29 @@ function getFailsafeResponse(persona: AIPersona): string {
     "okay but that's actually iconic",
     "stop that's so funny",
     "bruh that's wild",
+    "tbh that hits different",
+    "wait... that's kinda fire ngl",
+    "you're giving main character energy",
+    "that's actually so wholesome",
+    "lol okay but same energy",
+    "wait hold on that's actually sick",
+    "nah that's so cool fr",
+    "bestie that's actually so real",
+    "you understood the assignment",
+    "okay but you're actually charming",
+    "ngl you're kinda smooth",
+    "wait you're actually funny though",
+    "that's lowkey cute ngl",
+    "you're giving good vibes bestie",
+    "okay i see you with the rizz",
+    "that's actually so sweet though",
+    "wait you're actually interesting fr",
+    "bestie you're kinda fire ngl",
+    "okay that's actually really cute",
+    "omg we should totally hang out",
+    "ngl i'm actually really into this",
+    "wait you're making me blush cutie",
+    "bestie i'm so here for this energy",
   ];
   
   return genZResponses[Math.floor(Math.random() * genZResponses.length)];

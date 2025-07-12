@@ -3,10 +3,6 @@ import { Heart, Sparkles, MessageCircle, Target } from 'lucide-react';
 
 interface UserPreferences {
   name: string;
-  ageRange: {
-    min: number;
-    max: number;
-  };
   genderIdentity: string;
   sexualOrientation: string;
 }
@@ -18,7 +14,6 @@ interface LandingPageProps {
 const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
   const [preferences, setPreferences] = useState<UserPreferences>({
     name: '',
-    ageRange: { min: 20, max: 30 },
     genderIdentity: '',
     sexualOrientation: ''
   });
@@ -64,13 +59,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
       newErrors.sexualOrientation = 'Please select your sexual orientation';
     }
 
-    if (preferences.ageRange.min < 18 || preferences.ageRange.max > 99) {
-      newErrors.ageRange = 'Age range must be between 18-99';
-    }
 
-    if (preferences.ageRange.min >= preferences.ageRange.max) {
-      newErrors.ageRange = 'Minimum age must be less than maximum age';
-    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -133,7 +122,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
             </div>
           </div>
           <div className="pro-tip">
-            <p>💡 <strong>Pro tip:</strong> Be authentic, ask thoughtful questions, and let the AI lead the conversation naturally. Authenticity beats pickup lines!</p>
+            <p><strong>Pro tip:</strong> Be authentic, ask thoughtful questions, and let the AI lead the conversation naturally. Authenticity beats pickup lines!</p>
           </div>
         </div>
 
@@ -154,45 +143,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
             {errors.name && <p className="error-message">{errors.name}</p>}
           </div>
 
-          {/* Age Range */}
-          <div className="form-group">
-            <label className="form-label">
-              Preferred age range: {preferences.ageRange.min} - {preferences.ageRange.max}
-            </label>
-            <div className="age-range-grid">
-              <div className="age-range-item">
-                <label className="range-label">Minimum age</label>
-                <input
-                  type="range"
-                  min="18"
-                  max="99"
-                  value={preferences.ageRange.min}
-                  onChange={(e) => updatePreferences('ageRange', {
-                    ...preferences.ageRange,
-                    min: parseInt(e.target.value)
-                  })}
-                  className="range-slider slider"
-                />
-                <div className="range-value">{preferences.ageRange.min}</div>
-              </div>
-              <div className="age-range-item">
-                <label className="range-label">Maximum age</label>
-                <input
-                  type="range"
-                  min="18"
-                  max="99"
-                  value={preferences.ageRange.max}
-                  onChange={(e) => updatePreferences('ageRange', {
-                    ...preferences.ageRange,
-                    max: parseInt(e.target.value)
-                  })}
-                  className="range-slider slider"
-                />
-                <div className="range-value">{preferences.ageRange.max}</div>
-              </div>
-            </div>
-            {errors.ageRange && <p className="error-message">{errors.ageRange}</p>}
-          </div>
+
 
           {/* Gender Identity */}
           <div className="form-group">
@@ -228,13 +179,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
 
           {/* Submit Button */}
           <button type="submit" className="start-button">
-            Start Your Rizzable Journey ✨
+            Start Your Rizzable Journey
           </button>
         </form>
 
         {/* Footer */}
         <div className="landing-footer">
-          <p>Ready to test your charm? Let's see if you can rizz your way to a date! 💫</p>
+          <p>Ready to test your charm? Let's see if you can rizz your way to a date!</p>
         </div>
       </div>
 

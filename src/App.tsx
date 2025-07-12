@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, Info, Phone, Video, RefreshCw } from 'lucide-react'
+import { Send, Info, Phone, Video, RefreshCw, Home } from 'lucide-react'
 import { generateRandomPersona, AIPersona, UserPreferences as PersonaUserPreferences } from './services/personaGenerator'
 import { generateAIResponse, ConversationContext, testOpenAIConnection, generateFirstMessage } from './services/openaiService'
 import LandingPage from './components/LandingPage'
@@ -14,10 +14,6 @@ interface Message {
 
 interface UserPreferences {
   name: string
-  ageRange: {
-    min: number
-    max: number
-  }
   genderIdentity: string
   sexualOrientation: string
 }
@@ -32,6 +28,8 @@ interface GameMetrics {
 interface GameCompletionData {
   isVisible: boolean
   metrics: GameMetrics
+  isTimeout: boolean
+  isFriendzone: boolean
 }
 
 function App() {
@@ -46,7 +44,8 @@ function App() {
   const [conversationContext, setConversationContext] = useState<ConversationContext>({
     messages: [],
     messageCount: 0,
-    userInterestLevel: 0
+    userInterestLevel: 0,
+    currentInterestLevel: 1
   })
   const [gameMetrics, setGameMetrics] = useState<GameMetrics>({
     startTime: null,
@@ -61,7 +60,9 @@ function App() {
       totalWords: 0,
       totalTime: 0,
       rizzIndex: 0
-    }
+    },
+    isTimeout: false,
+    isFriendzone: false
   })
   const [isGameCompleted, setIsGameCompleted] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -107,7 +108,8 @@ function App() {
     setConversationContext({
       messages: [{ role: 'assistant', content: firstMessageText }],
       messageCount: 0,
-      userInterestLevel: 0
+      userInterestLevel: 0,
+      currentInterestLevel: 1
     })
     
     // Initialize game metrics
@@ -125,7 +127,9 @@ function App() {
         totalWords: 0,
         totalTime: 0,
         rizzIndex: 0
-      }
+      },
+      isTimeout: false,
+      isFriendzone: false
     })
     
     setIsLoading(false)
@@ -137,7 +141,8 @@ function App() {
     setConversationContext({
       messages: [],
       messageCount: 0,
-      userInterestLevel: 0
+      userInterestLevel: 0,
+      currentInterestLevel: 1
     })
     setIsGameCompleted(false)
     setGameCompletion({
@@ -147,36 +152,142 @@ function App() {
         totalWords: 0,
         totalTime: 0,
         rizzIndex: 0
-      }
+      },
+      isTimeout: false,
+      isFriendzone: false
     })
     initializeChat()
   }
 
+  const returnHome = () => {
+    // Reset all state and return to landing page
+    setHasCompletedLanding(false)
+    setUserPreferences(null)
+    setPersona(null)
+    setMessages([])
+    setInputText('')
+    setConversationContext({
+      messages: [],
+      messageCount: 0,
+      userInterestLevel: 0,
+      currentInterestLevel: 1
+    })
+    setIsGameCompleted(false)
+    setGameCompletion({
+      isVisible: false,
+      metrics: {
+        startTime: null,
+        totalWords: 0,
+        totalTime: 0,
+        rizzIndex: 0
+      },
+      isTimeout: false,
+      isFriendzone: false
+    })
+    setGameMetrics({
+      startTime: null,
+      totalWords: 0,
+      totalTime: 0,
+      rizzIndex: 0
+    })
+    setApiStatus('testing')
+    setIsLoading(false)
+    setIsTyping(false)
+  }
+
+  // Function to detect if AI has friendzoned the user
+  const detectFriendzone = (aiResponse: string): boolean => {
+    const response = aiResponse.toLowerCase()
+    console.log('🔍 Checking for friendzone in response:', response)
+    
+    // Common friendzone patterns
+    const friendzonePatterns = [
+      // Direct friendzone statements
+      /(let['']?s just be friends|let['']?s stay friends|we should just be friends)/,
+      /(i see you as a friend|you['']?re like a friend|think of you as a friend)/,
+      /(just friends|only friends|friend vibes|platonic)/,
+      /(you['']?re like a brother|you['']?re like a sister|sibling energy)/,
+      /(don['']?t want to ruin our friendship|keep our friendship)/,
+      /(better as friends|work better as friends|meant to be friends)/,
+      /(friend zone|friendzone|friend-zone)/,
+      /(not interested romantically|not romantic|no romantic)/,
+      /(like you but not that way|like you as a friend)/,
+      /(bestie|bro|homie).*(stay|keep|remain|just)/,
+      /(friend material|friendship material)/,
+      /(value our friendship|friendship is important)/,
+      /(don['']?t see you that way|not feeling it romantically)/,
+      /(you['']?re sweet but|you['']?re nice but).*(friend|not|don['']?t)/,
+      /(appreciate you as a friend|care about you as a friend)/,
+      /(let['']?s keep things friendly|keep it friendly)/,
+      /(you['']?re a good friend|great friend|amazing friend|best friend)/,
+      /(friend energy|giving friend vibes|friendship vibes)/,
+      /(not looking for anything romantic|not interested in dating)/,
+      /(you['']?re really sweet but|you['']?re cool but).*(friend|not)/,
+    ]
+    
+    const hasMatch = friendzonePatterns.some(pattern => pattern.test(response))
+    
+    if (hasMatch) {
+      console.log('💔 FRIENDZONE DETECTED!')
+      return true
+    }
+    
+    console.log('✅ No friendzone detected')
+    return false
+  }
+
   // Function to detect if AI has agreed to go on a date
-  const detectDateAgreement = (aiResponse: string, userMessage?: string): boolean => {
+  const detectDateAgreement = (aiResponse: string, userMessage?: string, interestLevel?: number): boolean => {
     const response = aiResponse.toLowerCase()
     const userMsg = userMessage?.toLowerCase() || ''
+    const currentInterest = interestLevel || 0
     
     console.log('🔍 Checking for date agreement in:', response)
     console.log('🔍 User message context:', userMsg)
+    console.log('🔍 AI interest level:', currentInterest)
     
-    // Check if user message contains explicit date invitation words
-    const userAskedForDate = /\b(dinner|lunch|coffee|drinks|movie|date|go out|hang out|meet up)\b/.test(userMsg) && 
-                             /\b(wanna|want to|would you like to|let['']?s|should we|how about|what about)\b/.test(userMsg)
-    console.log('🔍 User asked for date:', userAskedForDate)
+    // Enhanced user date invitation detection
+    const dateActivities = /\b(dinner|lunch|coffee|drinks|movie|date|go out|hang out|meet up|see you|get together|grab)\b/
+    const invitationPhrases = /\b(wanna|want to|would you like to|let['']?s|should we|how about|what about|do you want|are you free|free to|up for|down for|interested in)\b/
+    const questionMarks = /\?/
     
-    // Check if AI wants to keep talking first (should NOT end game)
+    const userAskedForDate = dateActivities.test(userMsg) && 
+                            (invitationPhrases.test(userMsg) || questionMarks.test(userMsg))
+    
+    // Also catch direct invitations without specific phrases
+    const directInvitations = /\b(date me|ask you out|take you out|see you tonight|see you tomorrow|meet tonight|meet tomorrow)\b/
+    const userAskedDirectly = directInvitations.test(userMsg)
+    
+    const totalUserAsked = userAskedForDate || userAskedDirectly
+    console.log('🔍 User asked for date:', totalUserAsked)
+    
+    // Enhanced check if AI wants to keep talking first (should NOT end game)
     const wantsToTalkMore = [
+      // Direct rejections
       /(let['']?s talk more|we should talk more|get to know|know each other better)/,
       /(maybe later|not yet|too soon|too fast|slow down)/,
       /(first let['']?s|maybe we should|i think we should|how about we)/,
       /(take it slow|take things slow|see where this goes|see how things go)/,
       /(chat more|talk a bit more|get to know you better|learn more about)/,
       /(not ready|maybe after|perhaps after|maybe once we)/,
-      /(rushing|moving fast|taking things fast)/,
-      /(i barely know you|we just met|don['']?t really know each other)/,
-      /(let['']?s see|maybe someday|perhaps|potentially|we['']?ll see)/,
-      /(bit forward|kinda forward|pretty forward|moving quick)/
+      
+      // Speed concerns
+      /(rushing|moving fast|taking things fast|moving quick|bit forward|kinda forward|pretty forward)/,
+      /(whoa|slow down|hold on|wait|pump the brakes)/,
+      
+      // Not knowing each other well enough
+      /(i barely know you|we just met|don['']?t really know each other|we literally just started)/,
+      /(you don['']?t know me|i don['']?t know you|we['']?re strangers)/,
+      
+      // Uncertain responses
+      /(let['']?s see|maybe someday|perhaps|potentially|we['']?ll see|not sure)/,
+      /(maybe|might|could|possibly|we['']?ll see how)/,
+      
+      // Playful deflections
+      /(tiger|cutie|bestie|hold your horses|easy there|not so fast)/,
+      
+      // Want more conversation first
+      /(talk first|chat first|vibe first|get a feel|see how we vibe)/,
     ].some(pattern => pattern.test(response))
     
     if (wantsToTalkMore) {
@@ -184,69 +295,122 @@ function App() {
       return false
     }
     
-    // Patterns that indicate date agreement (VERY SPECIFIC ONLY)
+    // Enhanced patterns that indicate date agreement
     const dateAgreementPatterns = [
-      // Direct agreement with date words (must include date activity)
-      /(yes|yeah|yep|sure|absolutely|definitely|totally).*(dinner|lunch|coffee|drinks|movie|date|go out|hang out|meet up)/,
-      /(i['d]? love to (go|have|get)|i['d]? like to (go|have|get)).*(dinner|lunch|coffee|drinks|movie)/,
-      /(when|where|what time).*(dinner|lunch|coffee|drinks|movie|date|meet|hang out)/,
+      // Direct positive responses with date context
+      /(yes|yeah|yep|sure|absolutely|definitely|totally|ok|okay).*(dinner|lunch|coffee|drinks|movie|date|go out|hang out|meet up|see you)/,
+      /(i['d]? love to|i['d]? like to|i want to|i wanna).*(go|have|get|do|see you|meet|hang out)/,
       
-      // Planning responses with specific activities
-      /(what should we|where should we|when works|what time).*(do|go|meet|eat|drink)/,
-      /(coffee|dinner|lunch|movie|drinks).*(sounds (good|great|perfect|amazing)|would be (nice|fun|great))/,
-      /(what did you have in mind|where were you thinking|when works for you)/,
+      // Enthusiastic agreements
+      /(omg yes|yasss|yesss|hell yes|absolutely|for sure|definitely|count me in)/,
+      /(i['m]? so down|so down|i['m]? game|i['m]? up for it|let['s]? do it|why not)/,
+      /(sounds (good|great|perfect|amazing|fun|awesome)|would be (nice|fun|great|amazing))/,
       
-      // Time and place commitments (must reference specific plans)
-      /(tomorrow|tonight|this weekend|friday|saturday|sunday|next week).*(dinner|lunch|coffee|drinks|movie|meet)/,
-      /(7|8|9|six|seven|eight|nine|ten).*(pm|am|o['']?clock).*(dinner|lunch|coffee|drinks|movie)/,
+      // Planning and logistics responses
+      /(when|where|what time).*(work|good|best|free|available)/,
+      /(what should we|where should we|when works|what time|how about|what about)/,
+      /(what did you have in mind|where were you thinking|when works for you|i['m]? free)/,
       
-      // Enthusiastic responses to specific invitations
-      /(omg yes|yasss|yesss|hell yes).*(dinner|lunch|coffee|drinks|movie)/,
-      /(can['t]? wait|so excited|this is gonna be|looking forward).*(dinner|lunch|coffee|drinks|movie|date)/,
-      /(pick me up|meet me|see you).*(dinner|lunch|coffee|drinks|movie)/,
+      // Time commitments
+      /(tomorrow|tonight|this weekend|friday|saturday|sunday|next week|later|soon)/,
+      /(morning|afternoon|evening|7|8|9|pm|am|o['']?clock)/,
       
-      // Very specific agreement phrases only
-      /(let['s]? do it|count me in|i['m]? game|i['m]? up for it|why not)/,
-      /(sure thing|absolutely|definitely|sounds like a plan)/,
+      // Activity suggestions (showing engagement)
+      /(coffee sounds|dinner sounds|lunch sounds|movie sounds|drinks sound)/,
+      /(i know a place|there['s]? a great|i love|i['m]? into|that would be)/,
       
-      // When they ask follow-up questions (very specific)
-      /^(when|where|what time)\??\s*$/,
-      /(when (do you|would you|should we)|where (do you|would you|should we)|what time (do you|would you|should we))/,
+      // Excited/eager responses
+      /(can['t]? wait|so excited|this is gonna be|looking forward|excited to)/,
+      /(pick me up|meet me|see you|text me|call me)/,
+      
+      // Simple agreements when user clearly asked
+      /(sure thing|sounds like a plan|that works|perfect|bet|say less)/,
     ]
     
-    // Context-aware simple agreement patterns (ONLY if user explicitly asked for a date)
+    // Context-aware simple agreement patterns (when user clearly asked for a date)
     const contextualAgreementPatterns = [
-      // Very simple agreement responses (ONLY when user asked for specific date)
-      /^(yes|yeah|yep|sure|absolutely|definitely|totally)[\s!.]*$/,
-      /^(bet|say less|i['m]? down|let['s]? go)[\s!.]*$/,
+      // Simple positive responses when user asked for date
+      /^(yes|yeah|yep|sure|absolutely|definitely|totally|ok|okay)[\s!.😊😍💕]*$/,
+      /^(bet|say less|i['m]? down|let['s]? go|for sure)[\s!.😊😍💕]*$/,
       
       // Enthusiastic short responses
-      /^(omg yes|yasss|yesss|hell yes)[\s!.]*$/,
-      /^(i['m]? so down|so down|count me in)[\s!.]*$/,
+      /^(omg yes|yasss|yesss|hell yes|so down)[\s!.😊😍💕]*$/,
+      /^(i['m]? so down|count me in|i['m]? game)[\s!.😊😍💕]*$/,
       
-      // Only "that sounds" when followed by positive + agreement
-      /(that sounds|that would be).*(good|great|fun|perfect|amazing).*(let['s]?|we should|i['m]? in)/,
-      /(i['d]? love to|i['d]? like to).*(go|do that|that)/,
+      // Positive responses with emojis
+      /^(yes|yeah|sure|okay|absolutely).*[😊😍💕😘😏🥺✨💯].*$/,
+      
+      // Agreement with enthusiasm markers
+      /(that sounds|that would be).*(good|great|fun|perfect|amazing|awesome)/,
+      /(i['d]? love to|i['d]? like to|i want to).*(go|do that|see you)/,
+      /^(why not|sure thing|sounds good|sounds great|sounds perfect)[\s!.😊😍💕]*$/,
     ]
     
-    // Check standard patterns first
+    // Check both pattern types
     let hasMatch = dateAgreementPatterns.some(pattern => pattern.test(response))
     
     // If no match yet, check contextual patterns (only if user asked for date)
-    if (!hasMatch && userAskedForDate) {
+    if (!hasMatch && totalUserAsked) {
       hasMatch = contextualAgreementPatterns.some(pattern => pattern.test(response))
       if (hasMatch) {
         console.log('🎯 Contextual agreement detected based on user invitation!')
       }
     }
     
-    console.log('🎯 Date agreement detected:', hasMatch)
+    // Additional check for very obvious agreements that might be missed
+    const obviousAgreements = [
+      /let['s]? do (it|this|that)/,
+      /sounds like a plan/,
+      /i['m]? excited/,
+      /looking forward to/,
+      /can['t]? wait/,
+      /when (are|should) we/,
+      /where (are|should) we/,
+      /what time (should|do)/,
+      /pick me up/,
+      /see you (there|then|tonight|tomorrow)/,
+      /text me/,
+      /call me/,
+    ]
     
-    if (hasMatch) {
-      console.log('✅ SUCCESS! AI agreed to an immediate date with response:', aiResponse)
+    if (!hasMatch && totalUserAsked) {
+      hasMatch = obviousAgreements.some(pattern => pattern.test(response))
+      if (hasMatch) {
+        console.log('🎯 Obvious agreement pattern detected!')
+      }
     }
     
-    return hasMatch
+    console.log('🎯 Date agreement detected:', hasMatch)
+    console.log('🎯 User asked for date:', totalUserAsked)
+    console.log('🎯 AI response:', response)
+    
+    // CRITICAL: Only count as a win if AI has sufficient interest level (4+) AND user actually asked for a date
+    if (hasMatch && currentInterest >= 4 && totalUserAsked) {
+      console.log('✅ SUCCESS! AI agreed to a date with sufficient interest level:', currentInterest)
+      console.log('📋 WIN DETECTION SUMMARY:')
+      console.log('   - User asked for date:', totalUserAsked)
+      console.log('   - AI agreement detected:', hasMatch)
+      console.log('   - AI wants to talk more:', wantsToTalkMore)
+      console.log('   - Interest level:', currentInterest, '(need 4+)')
+      console.log('   - Game should end:', true)
+      return true
+    } else if (hasMatch && currentInterest < 4) {
+      console.log('❌ AI agreed to date but interest level too low:', currentInterest, '(need 4+)')
+      return false
+    } else if (hasMatch && !totalUserAsked) {
+      console.log('❌ AI seems to agree but user never asked for a date')
+      return false
+    }
+    
+    // Final summary
+    console.log('📋 DETECTION SUMMARY:')
+    console.log('   - User asked for date:', totalUserAsked)
+    console.log('   - AI agreement detected:', hasMatch)
+    console.log('   - AI wants to talk more:', wantsToTalkMore)
+    console.log('   - Interest level:', currentInterest, '(need 4+)')
+    console.log('   - Game should end:', false)
+    
+    return false
   }
 
   // Function to check if game should timeout
@@ -261,79 +425,168 @@ function App() {
     return timeInMinutes > 5 || messageCount >= 30
   }
 
+
+
+  // Function to handle game ending due to friendzone
+  const handleFriendzone = (messageCount: number, wordCount: number, interestLevel: number) => {
+    console.log('💔 Game ended due to friendzone!')
+    
+    // Calculate comprehensive rizz score for friendzone
+    const totalTime = gameMetrics.startTime ? Math.floor((new Date().getTime() - gameMetrics.startTime.getTime()) / 1000) : 0
+    const friendzoneRizzScore = calculateRizzScore(
+      wordCount,
+      totalTime,
+      messageCount,
+      interestLevel,
+      'friendzone'
+    )
+    
+    const friendzoneMetrics: GameMetrics = {
+      startTime: gameMetrics.startTime,
+      totalWords: wordCount,
+      totalTime: totalTime,
+      rizzIndex: friendzoneRizzScore
+    }
+
+    // Show friendzone popup
+    setIsGameCompleted(true)
+    setGameCompletion({
+      isVisible: true,
+      metrics: friendzoneMetrics,
+      isTimeout: false,
+      isFriendzone: true
+    })
+  }
+
   // Function to handle game timeout
   const handleGameTimeout = (messageCount: number, wordCount: number) => {
     console.log('⏰ Game timed out! Too slow or too many messages.')
     
+    // Calculate comprehensive rizz score for timeout
+    const currentInterestLevel = conversationContext.currentInterestLevel
+    const totalTime = gameMetrics.startTime ? Math.floor((new Date().getTime() - gameMetrics.startTime.getTime()) / 1000) : 0
+    const timeoutRizzScore = calculateRizzScore(
+      wordCount,
+      totalTime,
+      messageCount,
+      currentInterestLevel,
+      'timeout'
+    )
+    
     const timeoutMetrics: GameMetrics = {
       startTime: gameMetrics.startTime,
       totalWords: wordCount,
-      totalTime: gameMetrics.startTime ? Math.floor((new Date().getTime() - gameMetrics.startTime.getTime()) / 1000) : 0,
-      rizzIndex: 0 // Zero rizz for timeout
+      totalTime: totalTime,
+      rizzIndex: timeoutRizzScore
     }
 
     // Show timeout popup
     setIsGameCompleted(true)
     setGameCompletion({
       isVisible: true,
-      metrics: timeoutMetrics
+      metrics: timeoutMetrics,
+      isTimeout: true,
+      isFriendzone: false
     })
   }
 
-  // Function to calculate rizz index based on performance (extremely strict now)
-  const calculateRizzIndex = (wordCount: number, timeInSeconds: number, messageCount: number): number => {
+  // Comprehensive rizz calculation system
+  const calculateRizzScore = (
+    wordCount: number,
+    timeInSeconds: number,
+    messageCount: number,
+    interestLevel: number,
+    gameOutcome: 'success' | 'timeout' | 'friendzone'
+  ): number => {
     const timeInMinutes = timeInSeconds / 60
-    console.log('🔢 Rizz calculation - Time:', timeInMinutes.toFixed(2), 'min, Messages:', messageCount)
+    console.log('🔢 Comprehensive rizz calculation:')
+    console.log(`   Time: ${timeInMinutes.toFixed(2)} min, Messages: ${messageCount}`)
+    console.log(`   Interest Level: ${interestLevel}/10, Outcome: ${gameOutcome}`)
     
-    // LEGENDARY RIZZ: Under 30 seconds AND under 3 messages
-    if (timeInSeconds < 30 && messageCount <= 2) {
-      console.log('👑 LEGENDARY RIZZ achieved!')
-      return 100
+    // Base score multiplier based on game outcome
+    let outcomeMultiplier = 1.0
+    let baseBonus = 0
+    
+    switch (gameOutcome) {
+      case 'success':
+        outcomeMultiplier = 1.0 // Full scoring potential
+        baseBonus = 20 // Bonus for securing the date
+        break
+      case 'timeout':
+        outcomeMultiplier = 0.6 // Reduced scoring for timeout
+        baseBonus = 0
+        break
+      case 'friendzone':
+        outcomeMultiplier = 0.4 // Lowest scoring for friendzone
+        baseBonus = 0
+        break
     }
     
-    // ELITE RIZZ: Under 1 minute AND under 4 messages
-    if (timeInMinutes < 1 && messageCount <= 3) {
-      console.log('🔥 ELITE RIZZ achieved!')
-      return 90 + Math.floor(Math.random() * 10) // 90-99
-    }
+    // 1. EFFICIENCY SCORE (40% of total) - Speed and message count
+    let efficiencyScore = 0
     
-    // Calculate base score purely on time efficiency (70% of score)
-    let timeScore = 0
-    if (timeInSeconds < 30) timeScore = 95
-    else if (timeInSeconds < 60) timeScore = 85
-    else if (timeInSeconds < 90) timeScore = 70
-    else if (timeInSeconds < 120) timeScore = 55
-    else if (timeInSeconds < 180) timeScore = 40
-    else if (timeInSeconds < 240) timeScore = 25
-    else if (timeInSeconds < 300) timeScore = 10
-    else timeScore = 0 // Over 5 minutes = 0 time score
+    // Time efficiency (20% of total)
+    if (timeInSeconds < 30) efficiencyScore += 20
+    else if (timeInSeconds < 60) efficiencyScore += 18
+    else if (timeInSeconds < 90) efficiencyScore += 15
+    else if (timeInSeconds < 120) efficiencyScore += 12
+    else if (timeInSeconds < 180) efficiencyScore += 8
+    else if (timeInSeconds < 240) efficiencyScore += 5
+    else if (timeInSeconds < 300) efficiencyScore += 2
+    else efficiencyScore += 0 // Over 5 minutes = 0 time score
     
-    // Message efficiency score (30% of score)
-    let messageScore = 0
-    if (messageCount <= 2) messageScore = 30
-    else if (messageCount <= 3) messageScore = 25
-    else if (messageCount <= 5) messageScore = 15
-    else if (messageCount <= 8) messageScore = 5
-    else if (messageCount <= 12) messageScore = 0
-    else messageScore = -10 // Penalty for too many messages
+    // Message efficiency (20% of total)
+    if (messageCount <= 2) efficiencyScore += 20
+    else if (messageCount <= 3) efficiencyScore += 18
+    else if (messageCount <= 5) efficiencyScore += 15
+    else if (messageCount <= 8) efficiencyScore += 10
+    else if (messageCount <= 12) efficiencyScore += 5
+    else if (messageCount <= 20) efficiencyScore += 2
+    else efficiencyScore += 0 // Too many messages
     
-    // Combine scores
-    let rizzScore = timeScore + messageScore
+    // 2. CHARM SCORE (30% of total) - Based on interest level achieved
+    let charmScore = Math.min(30, interestLevel * 3) // Max 30 points, 3 points per interest level
     
-    // Severe penalties for inefficiency
-    if (timeInMinutes > 2) rizzScore -= 15
-    if (timeInMinutes > 3) rizzScore -= 20
-    if (messageCount > 5) rizzScore -= 15
-    if (messageCount > 8) rizzScore -= 25
-    
-    // Word efficiency penalty only (no bonus)
+    // 3. CONSISTENCY SCORE (20% of total) - Word efficiency and conversation flow
+    let consistencyScore = 20 // Start with full points
     const wordsPerMessage = wordCount / Math.max(messageCount, 1)
-    if (wordsPerMessage > 20) rizzScore -= 10 // Too verbose
-    if (wordsPerMessage > 30) rizzScore -= 15 // Way too verbose
     
-    // Final score
-    const finalScore = Math.max(0, Math.min(100, Math.round(rizzScore)))
-    console.log('📊 Final rizz score:', finalScore)
+    // Optimal range is 8-15 words per message
+    if (wordsPerMessage < 3) consistencyScore -= 10 // Too brief
+    else if (wordsPerMessage > 25) consistencyScore -= 8 // Too verbose
+    else if (wordsPerMessage > 20) consistencyScore -= 5
+    else if (wordsPerMessage > 15) consistencyScore -= 2
+    
+    // 4. LEGENDARY BONUSES - Special achievements
+    let legendaryBonus = 0
+    if (gameOutcome === 'success') {
+      if (timeInSeconds < 30 && messageCount <= 2) {
+        legendaryBonus = 20 // LEGENDARY RIZZ
+        console.log('👑 LEGENDARY RIZZ BONUS!')
+      } else if (timeInSeconds < 60 && messageCount <= 3) {
+        legendaryBonus = 15 // ELITE RIZZ
+        console.log('🔥 ELITE RIZZ BONUS!')
+      } else if (interestLevel >= 9) {
+        legendaryBonus = 10 // High charm bonus
+        console.log('💖 HIGH CHARM BONUS!')
+      }
+    }
+    
+    // Calculate final score
+    let rawScore = (efficiencyScore + charmScore + consistencyScore) * outcomeMultiplier
+    let finalScore = Math.round(rawScore + baseBonus + legendaryBonus)
+    
+    // Ensure score is within bounds
+    finalScore = Math.max(0, Math.min(100, finalScore))
+    
+    console.log('📊 Rizz calculation breakdown:')
+    console.log(`   Efficiency: ${efficiencyScore}/40 (Time: ${efficiencyScore/2}/20, Messages: ${efficiencyScore/2}/20)`)
+    console.log(`   Charm: ${charmScore}/30 (Interest Level: ${interestLevel}/10)`)
+    console.log(`   Consistency: ${consistencyScore}/20 (Words/msg: ${wordsPerMessage.toFixed(1)})`)
+    console.log(`   Outcome Multiplier: ${outcomeMultiplier}x`)
+    console.log(`   Base Bonus: ${baseBonus}`)
+    console.log(`   Legendary Bonus: ${legendaryBonus}`)
+    console.log(`   Final Score: ${finalScore}/100`)
     
     return finalScore
   }
@@ -370,7 +623,8 @@ function App() {
     const newContext: ConversationContext = {
       messages: [...conversationContext.messages, { role: 'user', content: inputText }],
       messageCount: conversationContext.messageCount + 1,
-      userInterestLevel: conversationContext.userInterestLevel
+      userInterestLevel: conversationContext.userInterestLevel,
+      currentInterestLevel: conversationContext.currentInterestLevel
     }
     setConversationContext(newContext)
     setInputText('')
@@ -387,7 +641,9 @@ function App() {
       console.log('📩 User sent:', inputText)
       
       // Generate AI response using OpenAI
-      const aiResponseText = await generateAIResponse(inputText, persona, newContext)
+      const aiResponseData = await generateAIResponse(inputText, persona, newContext)
+      const aiResponseText = aiResponseData.response
+      const currentInterestLevel = aiResponseData.interestLevel
       
       // Simulate realistic typing delay (shorter for more natural feel)
       const typingDelay = 800 + Math.random() * 1500
@@ -402,22 +658,31 @@ function App() {
         setMessages(prev => [...prev, aiResponse])
         setConversationContext(prev => ({
           ...prev,
-          messages: [...prev.messages, { role: 'assistant', content: aiResponseText }]
+          messages: [...prev.messages, { role: 'assistant', content: aiResponseText }],
+          currentInterestLevel: currentInterestLevel
         }))
         setIsTyping(false)
 
-        // Check if AI agreed to a date
-        if (detectDateAgreement(aiResponseText, userMessage.text)) {
+        // Check if AI has friendzoned the user
+        if (detectFriendzone(aiResponseText)) {
+          handleFriendzone(newContext.messageCount, gameMetrics.totalWords + userWords, currentInterestLevel)
+          return
+        }
+
+        // Check if AI agreed to a date AND has sufficient interest level
+        if (detectDateAgreement(aiResponseText, userMessage.text, currentInterestLevel)) {
           // Calculate final metrics
           const currentTime = new Date()
           const totalTime = gameMetrics.startTime 
             ? Math.floor((currentTime.getTime() - gameMetrics.startTime.getTime()) / 1000)
             : 0
           
-          const finalRizzIndex = calculateRizzIndex(
+          const finalRizzIndex = calculateRizzScore(
             gameMetrics.totalWords + userWords,
             totalTime,
-            newContext.messageCount
+            newContext.messageCount,
+            currentInterestLevel,
+            'success'
           )
 
           const finalMetrics: GameMetrics = {
@@ -432,7 +697,9 @@ function App() {
             setIsGameCompleted(true)
             setGameCompletion({
               isVisible: true,
-              metrics: finalMetrics
+              metrics: finalMetrics,
+              isTimeout: false,
+              isFriendzone: false
             })
           }, 1500) // Short delay to let user read the success message
         }
@@ -441,7 +708,15 @@ function App() {
       console.error('Error generating response:', error)
       // Fallback response with Gen Z energy
               setTimeout(() => {
-          const fallbackResponseText = "oop my wifi is being so weird rn 😭 what were you saying bestie?"
+          const fallbackResponses = [
+            "oop my wifi is being so weird rn 😭 what were you saying bestie?",
+            "omg sorry my phone is literally glitching rn 💀 can you repeat that?",
+            "wait hold on my service is trash rn 😤 what did you say?",
+            "bestie my phone is acting up... what were you saying? 🥺",
+            "ugh technology is not it today 😭 say that again?",
+            "sorry babe my wifi said no apparently 💀 what was that?",
+          ]
+          const fallbackResponseText = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)]
           const fallbackResponse: Message = {
             id: (Date.now() + 1).toString(),
             text: fallbackResponseText,
@@ -451,17 +726,25 @@ function App() {
           setMessages(prev => [...prev, fallbackResponse])
           setIsTyping(false)
 
+          // Check fallback response for friendzone (unlikely but just in case)
+          if (detectFriendzone(fallbackResponseText)) {
+            handleFriendzone(newContext.messageCount, gameMetrics.totalWords + userWords, 1)
+            return
+          }
+
           // Check fallback response for date agreement (unlikely but just in case)
-          if (detectDateAgreement(fallbackResponseText, userMessage.text)) {
+          if (detectDateAgreement(fallbackResponseText, userMessage.text, 1)) {
             const currentTime = new Date()
             const totalTime = gameMetrics.startTime 
               ? Math.floor((currentTime.getTime() - gameMetrics.startTime.getTime()) / 1000)
               : 0
             
-            const finalRizzIndex = calculateRizzIndex(
+            const finalRizzIndex = calculateRizzScore(
               gameMetrics.totalWords + userWords,
               totalTime,
-              newContext.messageCount
+              newContext.messageCount,
+              1, // Low interest for fallback response
+              'success'
             )
 
             const finalMetrics: GameMetrics = {
@@ -475,7 +758,9 @@ function App() {
               setIsGameCompleted(true)
               setGameCompletion({
                 isVisible: true,
-                metrics: finalMetrics
+                metrics: finalMetrics,
+                isTimeout: false,
+                isFriendzone: false
               })
             }, 1500)
           }
@@ -509,33 +794,57 @@ function App() {
   }
 
   // Function to get rizz rating text
-  const getRizzRating = (score: number): { text: string; emoji: string } => {
-    if (score === 0) return { text: "TIMEOUT", emoji: "⏰" }
-    if (score === 100) return { text: "LEGENDARY RIZZ", emoji: "👑" }
-    if (score >= 90) return { text: "ELITE RIZZ", emoji: "🔥" }
-    if (score >= 75) return { text: "SOLID RIZZ", emoji: "✨" }
-    if (score >= 60) return { text: "DECENT RIZZ", emoji: "😎" }
-    if (score >= 45) return { text: "AVERAGE RIZZ", emoji: "😊" }
-    if (score >= 30) return { text: "WEAK RIZZ", emoji: "😅" }
-    if (score >= 15) return { text: "POOR RIZZ", emoji: "😬" }
-    return { text: "RIZZ-LESS", emoji: "💀" }
+  const getRizzRating = (score: number, isTimeout: boolean = false, isFriendzone: boolean = false): { text: string; emoji: string } => {
+    if (score === 100) return { text: "LEGENDARY RIZZ", emoji: "" }
+    if (score >= 90) return { text: "ELITE RIZZ", emoji: "" }
+    if (score >= 75) return { text: "SOLID RIZZ", emoji: "" }
+    if (score >= 60) return { text: "DECENT RIZZ", emoji: "" }
+    if (score >= 45) return { text: "AVERAGE RIZZ", emoji: "" }
+    if (score >= 30) return { text: "WEAK RIZZ", emoji: "" }
+    
+    // Friendzone-specific messages
+    if (isFriendzone) {
+      if (score >= 15) return { text: "FRIENDZONED - DECENT EFFORT", emoji: "" }
+      if (score >= 10) return { text: "FRIENDZONED - SOME PROGRESS", emoji: "" }
+      if (score >= 5) return { text: "FRIENDZONED - WEAK GAME", emoji: "" }
+      return { text: "FRIENDZONED - NO RIZZ", emoji: "" }
+    }
+    
+    // Timeout-specific messages
+    if (isTimeout) {
+      if (score >= 25) return { text: "TIMEOUT - ALMOST HAD IT", emoji: "" }
+      if (score >= 20) return { text: "TIMEOUT - GOOD PROGRESS", emoji: "" }
+      if (score >= 15) return { text: "TIMEOUT - DECENT EFFORT", emoji: "" }
+      if (score >= 10) return { text: "TIMEOUT - SOME PROGRESS", emoji: "" }
+      if (score >= 5) return { text: "TIMEOUT - MINIMAL RIZZ", emoji: "" }
+    }
+    
+    if (score >= 15) return { text: "POOR RIZZ", emoji: "" }
+    return { text: "RIZZ-LESS", emoji: "" }
   }
 
   // Game completion popup component
   const GameCompletionPopup = () => {
     if (!gameCompletion.isVisible) return null
 
-    const { metrics } = gameCompletion
-    const rating = getRizzRating(metrics.rizzIndex)
-    const isTimeout = metrics.rizzIndex === 0
+    const { metrics, isTimeout, isFriendzone } = gameCompletion
+    const rating = getRizzRating(metrics.rizzIndex, isTimeout, isFriendzone)
 
     return (
       <div className="game-completion-overlay">
         <div className="game-completion-popup">
           <div className="popup-header">
-            {isTimeout ? (
+            {isFriendzone ? (
               <>
-                <h2>⏰ Game Over!</h2>
+                <h2>You've Been Friendzoned!</h2>
+                <p>They want to keep things platonic. Better luck next time!</p>
+                <p className="friendzone-message">
+                  Work on your charm and try a different approach.
+                </p>
+              </>
+            ) : isTimeout ? (
+              <>
+                <h2>Game Over!</h2>
                 <p>Time's up! You took too long or sent too many messages.</p>
                 <p className="timeout-message">
                   {metrics.totalTime > 300 ? 'Over 5 minutes' : '30+ messages'} - work on your efficiency!
@@ -543,7 +852,7 @@ function App() {
               </>
             ) : (
               <>
-                <h2>🎉 Date Secured!</h2>
+                <h2>Date Secured!</h2>
                 <p>Congratulations! You successfully asked them out!</p>
               </>
             )}
@@ -579,13 +888,22 @@ function App() {
           
           <div className="popup-actions">
             <button 
-              className="try-again-btn"
-              onClick={() => {
-                setGameCompletion({ isVisible: false, metrics: { startTime: null, totalWords: 0, totalTime: 0, rizzIndex: 0 }})
-                generateNewPersona()
-              }}
+              className="try-again-btn secondary"
+                          onClick={() => {
+              setGameCompletion({ isVisible: false, metrics: { startTime: null, totalWords: 0, totalTime: 0, rizzIndex: 0 }, isTimeout: false, isFriendzone: false })
+              returnHome()
+            }}
             >
-              {isTimeout ? 'Try Again (Be Faster!)' : 'Try New Match'}
+              Return Home
+            </button>
+            <button 
+              className="try-again-btn"
+                          onClick={() => {
+              setGameCompletion({ isVisible: false, metrics: { startTime: null, totalWords: 0, totalTime: 0, rizzIndex: 0 }, isTimeout: false, isFriendzone: false })
+              generateNewPersona()
+            }}
+            >
+              {isFriendzone ? 'Try Again (Better Rizz!)' : isTimeout ? 'Try Again (Be Faster!)' : 'Try New Match'}
             </button>
           </div>
         </div>
@@ -603,15 +921,51 @@ function App() {
     return (
       <div className="app">
         <div className="loading-container">
-          <div className="loading-spinner">✨</div>
+          <div className="loading-spinner"></div>
           <p>Finding your perfect match...</p>
-          {apiStatus === 'testing' && <p className="api-status">🔑 Testing AI connection...</p>}
-          {apiStatus === 'failed' && <p className="api-status error">⚠️ AI temporarily offline (using fallback)</p>}
-          {apiStatus === 'working' && <p className="api-status success">✅ AI ready!</p>}
+          {apiStatus === 'testing' && <p className="api-status">Testing AI connection...</p>}
+          {apiStatus === 'failed' && <p className="api-status error">AI temporarily offline (using fallback)</p>}
+          {apiStatus === 'working' && <p className="api-status success">AI ready!</p>}
         </div>
       </div>
     )
   }
+
+  // Function to get interest level display
+  const getInterestMeter = (level: number) => {
+    const maxLevel = 10
+    const filledHearts = Math.min(Math.floor(level), maxLevel)
+    const emptyHearts = maxLevel - filledHearts
+    
+    let statusText = ""
+    let statusEmoji = ""
+    
+    if (level >= 8) {
+      statusText = "Absolutely Smitten!"
+      statusEmoji = ""
+    } else if (level >= 6) {
+      statusText = "Really Into You!"
+      statusEmoji = ""
+    } else if (level >= 4) {
+      statusText = "Warming Up"
+      statusEmoji = ""
+    } else if (level >= 2) {
+      statusText = "Open to Charm"
+      statusEmoji = ""
+    } else {
+      statusText = "Just Getting Started"
+      statusEmoji = ""
+    }
+    
+    return {
+      hearts: "💖".repeat(filledHearts) + "🤍".repeat(emptyHearts),
+      statusText,
+      statusEmoji,
+      level: level.toFixed(1)
+    }
+  }
+
+  const currentInterestMeter = getInterestMeter(conversationContext.currentInterestLevel)
 
   return (
     <div className="app">
@@ -623,13 +977,14 @@ function App() {
             <div className="contact-details">
               <h2 className="contact-name">
                 {persona.name}
-                {apiStatus === 'failed' && <span className="ai-status-badge">🔄</span>}
-                {apiStatus === 'working' && <span className="ai-status-badge">🤖</span>}
               </h2>
               <p className="contact-status">Online</p>
             </div>
           </div>
           <div className="header-actions">
+            <button className="header-btn" onClick={returnHome} title="Return Home">
+              <Home size={20} />
+            </button>
             <button className="header-btn" onClick={generateNewPersona} title="New Match">
               <RefreshCw size={20} />
             </button>
@@ -646,11 +1001,34 @@ function App() {
         </div>
       </div>
 
+      {/* Interest Level Meter */}
+      <div className="interest-meter">
+        <div className="interest-meter-content">
+          <div className="interest-hearts">
+            <span className="hearts-display">{currentInterestMeter.hearts}</span>
+          </div>
+          <div className="interest-status">
+            <span className="status-emoji">{currentInterestMeter.statusEmoji}</span>
+            <span className="status-text">{currentInterestMeter.statusText}</span>
+            <span className="status-level">({currentInterestMeter.level}/10)</span>
+          </div>
+        </div>
+        <div className="interest-tip">
+          {conversationContext.currentInterestLevel < 4 
+            ? "Try compliments, be funny, show genuine interest - they're open to charm!" 
+            : conversationContext.currentInterestLevel < 6
+            ? "You're making progress! Keep being charming and flirty."
+            : conversationContext.currentInterestLevel < 8
+            ? "They're really into you! Great time to ask them out!"
+            : "They're absolutely smitten! They'll say yes immediately - ask now!"}
+        </div>
+      </div>
+
       {/* Persona Bio */}
       <div className="persona-bio">
         <p>{persona.bio}</p>
         {apiStatus === 'failed' && (
-          <p className="api-warning">⚠️ Using fallback responses - check console for details</p>
+          <p className="api-warning">Using fallback responses - check console for details</p>
         )}
       </div>
 

@@ -3,7 +3,6 @@ export interface AIPersona {
   personality: string;
   bio: string;
   avatar: string;
-  age: number;
   interests: string[];
   conversationStyle: string;
 }
@@ -101,10 +100,6 @@ function getRandomItems<T>(array: T[], count: number): T[] {
 
 export interface UserPreferences {
   name: string;
-  ageRange: {
-    min: number;
-    max: number;
-  };
   genderIdentity: string;
   sexualOrientation: string;
 }
@@ -148,36 +143,30 @@ export function generateRandomPersona(userPreferences?: UserPreferences): AIPers
   const interests = getRandomItems(INTERESTS, 3 + Math.floor(Math.random() * 3));
   const conversationStyle = getRandomItem(CONVERSATION_STYLES);
   const avatar = getRandomItem(AVATARS);
-  
-  // Use user's preferred age range if available
-  const minAge = userPreferences?.ageRange.min || 20;
-  const maxAge = userPreferences?.ageRange.max || 25;
-  const age = minAge + Math.floor(Math.random() * (maxAge - minAge + 1));
 
   // Generate bio based on personality and interests
-  const bio = generateBio(personality, interests, age);
+  const bio = generateBio(personality, interests);
 
   return {
     name,
     personality,
     bio,
     avatar,
-    age,
     interests,
     conversationStyle
   };
 }
 
-function generateBio(personality: string, interests: string[], age: number): string {
+function generateBio(personality: string, interests: string[]): string {
   const templates = [
-    `${age} • ${personality} • lowkey obsessed with ${interests[0]} and ${interests[1]} ✨`,
-    `${personality} bestie who's into ${interests[0]}, ${interests[1]}, and vibing 💫`,
-    `${age} • ${personality} • my feed is all ${interests[0]} and ${interests[1]} content 🌟`,
-    `${personality} energy • always down for ${interests[0]} or ${interests[1]} adventures 🌙`,
-    `${age} • ${personality} • ${interests[0]} enthusiast and ${interests[1]} lover 🦋`,
-    `main character energy • ${personality} • ${interests[0]} + ${interests[1]} = my vibe ✨`,
-    `${age} • ${personality} • currently hyperfixated on ${interests[0]} and ${interests[1]} 🌸`,
-    `${personality} girlie who's obsessed with ${interests[0]} and ${interests[1]} fr 💫`
+    `${personality} • lowkey obsessed with ${interests[0]} and ${interests[1]}`,
+    `${personality} bestie who's into ${interests[0]}, ${interests[1]}, and vibing`,
+    `${personality} • my feed is all ${interests[0]} and ${interests[1]} content`,
+    `${personality} energy • always down for ${interests[0]} or ${interests[1]} adventures`,
+    `${personality} • ${interests[0]} enthusiast and ${interests[1]} lover`,
+    `main character energy • ${personality} • ${interests[0]} + ${interests[1]} = my vibe`,
+    `${personality} • currently hyperfixated on ${interests[0]} and ${interests[1]}`,
+    `${personality} girlie who's obsessed with ${interests[0]} and ${interests[1]} fr`
   ];
   
   return getRandomItem(templates);
