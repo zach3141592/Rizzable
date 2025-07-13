@@ -40,13 +40,34 @@ Your matches will text you like real Gen Z people:
    npm install
    ```
 
-2. **Start the development server:**
+2. **Set up environment variables:**
+
+   Create a `.env` file in the root directory and add your OpenAI API key:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Then edit the `.env` file and replace `your_openai_api_key_here` with your actual OpenAI API key:
+
+   ```
+   VITE_OPENAI_API_KEY=sk-your-actual-openai-api-key-here
+   ```
+
+   **Get your OpenAI API key:**
+
+   - Visit [OpenAI Platform](https://platform.openai.com/api-keys)
+   - Create an account or sign in
+   - Generate a new API key
+   - Copy it to your `.env` file
+
+3. **Start the development server:**
 
    ```bash
    npm run dev
    ```
 
-3. **Open your browser:**
+4. **Open your browser:**
    - Visit `http://localhost:3000`
    - Meet your first Gen Z AI match and start chatting!
 
@@ -126,12 +147,14 @@ npm run preview
 
 ## ⚠️ API Key Security
 
-**Important**: The current implementation includes the API key in the frontend code for demo purposes. For production use:
+**Important**: The app now uses environment variables for API keys, but they're still exposed in the frontend build. For production use:
 
 1. **Move API calls to a backend server**
 2. **Store API keys securely on the server**
 3. **Implement proper authentication**
-4. **Use environment variables**
+4. **Never expose API keys in client-side code**
+
+**Current setup**: The API key is loaded from environment variables but is still included in the frontend bundle. This is acceptable for development but should be changed for production.
 
 ## 🎨 Design Details
 

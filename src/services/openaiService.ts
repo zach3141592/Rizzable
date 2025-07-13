@@ -1,8 +1,16 @@
 import OpenAI from 'openai';
 import { AIPersona } from './personaGenerator';
 
+// Get OpenAI API key from environment variables
+const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+
+if (!apiKey) {
+  console.error('❌ VITE_OPENAI_API_KEY environment variable is not set');
+  console.error('Please create a .env file with: VITE_OPENAI_API_KEY=your_api_key_here');
+}
+
 const openai = new OpenAI({
-  apiKey: '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',
+  apiKey: apiKey || 'dummy-key', // Use dummy key if not set to prevent crashes
   dangerouslyAllowBrowser: true // Note: In production, use a backend API
 });
 
