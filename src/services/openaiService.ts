@@ -31,7 +31,7 @@ export function generateFirstMessage(persona: AIPersona): string {
       `yooo ${name} here! your profile is giving main character energy`,
       `hey! i'm ${name} and ngl your vibe looks immaculate`,
       `${name} here and i'm lowkey obsessed with your energy already`,
-      `hey bestie! ${name} here and your profile just hit different fr`,
+      `hey! ${name} here and your profile just hit different fr`,
       `hi! i'm ${name} and honestly... your energy is sending me`,
     ],
     'creative and artistic': [
@@ -39,48 +39,48 @@ export function generateFirstMessage(persona: AIPersona): string {
       `hi! ${name} here, you seem so creative`,
       `${name} here and i'm getting major creative energy from you`,
       `hey! ${name} here and your vibe is giving artist energy`,
-      `hi bestie! i'm ${name} and your profile literally ate no cap`,
+      `hi! i'm ${name} and your profile literally ate no cap`,
     ],
     'intellectual and curious': [
       `hey! ${name} here and your profile lowkey has me curious`,
       `hi! i'm ${name} and ngl i love people who think differently`,
       `${name} here and you seem like you have interesting thoughts`,
-      `hey bestie! ${name} here and your profile is giving big brain energy`,
+      `hey! ${name} here and your profile is giving big brain energy`,
       `hi! i'm ${name} and something tells me you're actually interesting fr`,
     ],
     'warm and empathetic': [
       `hii! i'm ${name} and your profile is giving such good vibes`,
       `hey! ${name} here and honestly your energy seems so warm`,
       `hi! i'm ${name} and you seem like such a genuine person`,
-      `hey bestie! ${name} here and your energy is so wholesome`,
+      `hey! ${name} here and your energy is so wholesome`,
       `hi! i'm ${name} and your vibe is giving comfort person energy`,
     ],
     'witty and charming': [
       `well well well, ${name} here and your profile is hitting different`,
       `hey! i'm ${name} and fair warning - my rizz is unmatched`,
       `hi! ${name} here with what i hope is an iconic first impression`,
-      `hey bestie! ${name} here and your profile understood the assignment`,
+      `hey! ${name} here and your profile understood the assignment`,
       `hi! i'm ${name} and ngl your energy is giving main character vibes`,
     ],
     'laid-back and easygoing': [
       `yo i'm ${name} - just vibing and thought i'd slide in`,
       `hey! ${name} here, keeping it lowkey but your profile caught my attention`,
       `hi! i'm ${name} and i'm getting immaculate vibes from you ngl`,
-      `hey bestie! ${name} here just chillin and your profile is giving good energy`,
+      `hey! ${name} here just chillin and your profile is giving good energy`,
       `hi! i'm ${name} and your vibe is lowkey fire though`,
     ],
     'playful and fun-loving': [
       `HEYYY ${name} here and i'm ready for some good conversations`,
       `hi! i'm ${name} and life's too short to be serious all the time`,
       `${name} here bringing chaotic good energy`,
-      `hey bestie! ${name} here and your profile is giving fun person energy`,
+      `hey! ${name} here and your profile is giving fun person energy`,
       `hi! i'm ${name} and your vibe is sending me honestly`,
     ],
     'mysterious and intriguing': [
-      `hey... i'm ${name} and something about your profile just hits different`,
+      `hey... i'm ${name}`,
       `hi. ${name} here and i'm lowkey intrigued by you...`,
       `${name} here and i'm getting the sense there's more to you`,
-      `hey bestie... ${name} here and your energy is giving mystery vibes`,
+      `hey... ${name} here and your energy is giving mystery vibes`,
       `hi. i'm ${name} and your profile has me curious ngl...`,
     ],
   };
@@ -90,10 +90,10 @@ export function generateFirstMessage(persona: AIPersona): string {
     `hey! i'm ${name} and your profile is a whole vibe`,
     `hi! ${name} here and ngl you caught my attention`,
     `${name} here and i'm lowkey excited to get to know you better`,
-    `hey bestie! ${name} here and your energy is giving good vibes`,
+    `hey! ${name} here and your energy is giving good vibes`,
     `hi! i'm ${name} and your profile literally slaps no cap`,
     `hey! ${name} here and something about your vibe hits different`,
-    `hi bestie! i'm ${name} and your profile understood the assignment fr`,
+    `hi! i'm ${name} and your profile understood the assignment fr`,
   ];
   
   return matchingTemplates[Math.floor(Math.random() * matchingTemplates.length)];
@@ -273,9 +273,9 @@ CRITICAL: LET THEM DRIVE THE CONVERSATION
 TEXT LIKE A REAL HUMAN GEN Z PERSON:
 - CRITICAL: Keep responses under 15 words maximum - be concise and punchy
 - Sound natural and conversational - like you're actually texting a friend
-- Use Gen Z slang authentically: "fr", "ngl", "lowkey", "highkey", "no cap", "bet", "say less", "it's giving...", "slay", "periodt", "bestie", "iconic", "unhinged", "valid", "vibe check", "main character energy", "ate", "slaps", "hits different", "understood the assignment", "living for this"
+- Use Gen Z slang authentically: "fr", "ngl", "lowkey", "highkey", "bet", "say less", "slay", "period", "iconic", "unhinged", "valid", "vibe check", "main character energy", "ate", "slaps", "hits different"
 - Casual filler words: "literally", "actually", "honestly", "like", "so", "kinda", "sorta", "um", "lol", "tbh", "nvm"
-- Natural reactions: "stop", "shut up", "wait what", "bruh", "oop", "chile", "not me...", "the way i...", "i'm crying", "i'm dead", "i can't", "this is sending me", "bye", "girl/boy", "bestie no"
+- Natural reactions: "stop", "shut up", "wait what", "bruh", "oop", "chile", "not me...", "the way i...", "i'm crying", "i'm dead", "i can't", "this is sending me", "bye", "girl/boy"
 - Mix case naturally - mostly lowercase but caps for EMPHASIS or excitement
 - Always use contractions: "i'm", "you're", "don't", "can't", "won't", "that's", "it's", "we're"
 - Keep it SHORT - aim for 5-15 words per response, never longer
@@ -346,7 +346,6 @@ function getFailsafeResponse(persona: AIPersona): string {
     "lol okay but same energy",
     "wait hold on that's actually sick",
     "nah that's so cool fr",
-    "bestie that's actually so real",
     "you understood the assignment",
     "okay but you're actually charming",
     "ngl you're kinda smooth",
@@ -356,12 +355,10 @@ function getFailsafeResponse(persona: AIPersona): string {
     "okay i see you with the rizz",
     "that's actually so sweet though",
     "wait you're actually interesting fr",
-    "bestie you're kinda fire ngl",
     "okay that's actually really cute",
     "omg we should totally hang out",
     "ngl i'm actually really into this",
-    "wait you're making me blush cutie",
-    "bestie i'm so here for this energy",
+    "wait you're making me blush cutie"
   ];
   
   return genZResponses[Math.floor(Math.random() * genZResponses.length)];

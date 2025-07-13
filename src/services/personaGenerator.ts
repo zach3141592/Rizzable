@@ -160,13 +160,11 @@ export function generateRandomPersona(userPreferences?: UserPreferences): AIPers
 function generateBio(personality: string, interests: string[]): string {
   const templates = [
     `${personality} • lowkey obsessed with ${interests[0]} and ${interests[1]}`,
-    `${personality} bestie who's into ${interests[0]}, ${interests[1]}, and vibing`,
     `${personality} • my feed is all ${interests[0]} and ${interests[1]} content`,
     `${personality} energy • always down for ${interests[0]} or ${interests[1]} adventures`,
     `${personality} • ${interests[0]} enthusiast and ${interests[1]} lover`,
     `main character energy • ${personality} • ${interests[0]} + ${interests[1]} = my vibe`,
-    `${personality} • currently hyperfixated on ${interests[0]} and ${interests[1]}`,
-    `${personality} girlie who's obsessed with ${interests[0]} and ${interests[1]} fr`
+    `${personality} • currently hyperfixated on ${interests[0]} and ${interests[1]}`
   ];
   
   return getRandomItem(templates);
