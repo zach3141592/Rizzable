@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, Info, Phone, Video, RefreshCw, Home } from 'lucide-react'
+import { Send, Info, Phone, Video, RefreshCw, Home, Download } from 'lucide-react'
 import { generateRandomPersona, AIPersona, UserPreferences as PersonaUserPreferences } from './services/personaGenerator'
 import { generateAIResponse, ConversationContext, testOpenAIConnection, generateFirstMessage } from './services/openaiService'
 import LandingPage from './components/LandingPage'
+import jsPDF from 'jspdf'
 import './App.css'
 
 interface Message {
@@ -65,6 +66,7 @@ function App() {
     isFriendzone: false
   })
   const [isGameCompleted, setIsGameCompleted] = useState(false)
+  const [timeRemaining, setTimeRemaining] = useState(300) // 5 minutes in seconds
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Only initialize chat after landing page completion
@@ -120,6 +122,7 @@ function App() {
       rizzIndex: 0
     })
     setIsGameCompleted(false)
+    setTimeRemaining(300) // Reset countdown to 5 minutes
     setGameCompletion({
       isVisible: false,
       metrics: {
@@ -145,6 +148,7 @@ function App() {
       currentInterestLevel: 1
     })
     setIsGameCompleted(false)
+    setTimeRemaining(300) // Reset countdown
     setGameCompletion({
       isVisible: false,
       metrics: {
@@ -190,6 +194,7 @@ function App() {
       totalTime: 0,
       rizzIndex: 0
     })
+    setTimeRemaining(300) // Reset countdown
     setApiStatus('testing')
     setIsLoading(false)
     setIsTyping(false)
@@ -414,15 +419,14 @@ function App() {
   }
 
   // Function to check if game should timeout
-  const checkGameTimeout = (messageCount: number, startTime: Date | null): boolean => {
+  const checkGameTimeout = (startTime: Date | null): boolean => {
     if (!startTime) return false
     
     const currentTime = new Date()
     const timeElapsed = (currentTime.getTime() - startTime.getTime()) / 1000 // seconds
-    const timeInMinutes = timeElapsed / 60
     
-    // Game over if more than 5 minutes OR 30 messages
-    return timeInMinutes > 5 || messageCount >= 30
+    // Game over if more than 5 minutes (300 seconds)
+    return timeElapsed >= 300
   }
 
 
@@ -460,7 +464,7 @@ function App() {
 
   // Function to handle game timeout
   const handleGameTimeout = (messageCount: number, wordCount: number) => {
-    console.log('⏰ Game timed out! Too slow or too many messages.')
+    console.log('⏰ Game timed out! Time ran out.')
     
     // Calculate comprehensive rizz score for timeout
     const currentInterestLevel = conversationContext.currentInterestLevel
@@ -491,6 +495,9 @@ function App() {
   }
 
   // Comprehensive rizz calculation system
+  // NOTE: This scoring system considers time and message efficiency for rizz rating
+  // These factors do NOT affect game ending conditions (friendzone/success/timeout)
+  // Game outcomes are determined by AI responses and interest levels only
   const calculateRizzScore = (
     wordCount: number,
     timeInSeconds: number,
@@ -535,7 +542,7 @@ function App() {
     else if (timeInSeconds < 300) efficiencyScore += 2
     else efficiencyScore += 0 // Over 5 minutes = 0 time score
     
-    // Message efficiency (20% of total)
+    // Message efficiency (20% of total) - always consider for rizz scoring
     if (messageCount <= 2) efficiencyScore += 20
     else if (messageCount <= 3) efficiencyScore += 18
     else if (messageCount <= 5) efficiencyScore += 15
@@ -599,6 +606,27 @@ function App() {
     scrollToBottom()
   }, [messages])
 
+  // Countdown timer effect
+  useEffect(() => {
+    if (!hasCompletedLanding || !gameMetrics.startTime || isGameCompleted) return
+
+    const timer = setInterval(() => {
+      const currentTime = new Date()
+      const elapsed = Math.floor((currentTime.getTime() - gameMetrics.startTime!.getTime()) / 1000)
+      const remaining = Math.max(0, 300 - elapsed) // 5 minutes = 300 seconds
+      
+      setTimeRemaining(remaining)
+      
+      if (remaining <= 0) {
+        clearInterval(timer)
+        // Trigger game timeout when timer hits 0
+        handleGameTimeout(conversationContext.messageCount, gameMetrics.totalWords)
+      }
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [hasCompletedLanding, gameMetrics.startTime, isGameCompleted, conversationContext.messageCount, gameMetrics.totalWords])
+
   const sendMessage = async () => {
     if (!inputText.trim() || !persona || isTyping || isGameCompleted) return
 
@@ -631,7 +659,7 @@ function App() {
     setIsTyping(true)
 
     // Check for timeout before generating AI response
-    if (checkGameTimeout(newContext.messageCount, gameMetrics.startTime)) {
+    if (checkGameTimeout(gameMetrics.startTime)) {
       setIsTyping(false)
       handleGameTimeout(newContext.messageCount, gameMetrics.totalWords + userWords)
       return
@@ -641,7 +669,7 @@ function App() {
       console.log('📩 User sent:', inputText)
       
       // Generate AI response using OpenAI
-      const aiResponseData = await generateAIResponse(inputText, persona, newContext)
+      const aiResponseData = await generateAIResponse(inputText, persona, newContext, userPreferences?.name)
       const aiResponseText = aiResponseData.response
       const currentInterestLevel = aiResponseData.interestLevel
       
@@ -793,6 +821,142 @@ function App() {
     return `${minutes}m ${remainingSeconds}s`
   }
 
+  // Function to format countdown time
+  const formatCountdown = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+  }
+
+  // PDF Export Function
+  const exportConversationAsPDF = () => {
+    if (!persona || messages.length === 0) return
+
+    const pdf = new jsPDF()
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const margin = 20
+    const lineHeight = 7
+    let yPosition = margin
+
+    // Helper function to add text with word wrapping
+    const addWrappedText = (text: string, x: number, y: number, maxWidth: number, fontSize: number = 12) => {
+      pdf.setFontSize(fontSize)
+      const lines = pdf.splitTextToSize(text, maxWidth)
+      pdf.text(lines, x, y)
+      return y + (lines.length * lineHeight)
+    }
+
+    // Add simple header
+    pdf.setTextColor(0, 0, 0)
+    pdf.setFontSize(22)
+    pdf.setFont('helvetica', 'bold')
+    pdf.text('Rizzable Conversation Export', pageWidth / 2, yPosition, { align: 'center' })
+    yPosition += 15
+
+    // Add horizontal line
+    pdf.setLineWidth(0.5)
+    pdf.line(margin, yPosition, pageWidth - margin, yPosition)
+    yPosition += 15
+
+    // Add rizz rating section (simple)
+    const currentMetrics = gameCompletion.isVisible ? gameCompletion.metrics : gameMetrics
+    const finalRizzScore = currentMetrics.rizzIndex || 0
+    const rating = getRizzRating(finalRizzScore, gameCompletion.isTimeout, gameCompletion.isFriendzone)
+    
+    pdf.setFontSize(18)
+    pdf.setFont('helvetica', 'bold')
+    pdf.text(`RIZZ RATING: ${finalRizzScore}/100`, pageWidth / 2, yPosition, { align: 'center' })
+    yPosition += 10
+    
+    pdf.setFontSize(14)
+    pdf.setFont('helvetica', 'normal')
+    pdf.text(rating.text, pageWidth / 2, yPosition, { align: 'center' })
+    yPosition += 20
+
+    // Add game stats (simple list)
+    pdf.setFontSize(16)
+    pdf.setFont('helvetica', 'bold')
+    pdf.text('Game Statistics', margin, yPosition)
+    yPosition += 12
+    
+    pdf.setFontSize(12)
+    pdf.setFont('helvetica', 'normal')
+    const stats = [
+      `Match: ${persona.name}`,
+      `Personality: ${persona.personality}`,
+      `Messages Sent: ${conversationContext.messageCount}`,
+      `Words Used: ${currentMetrics.totalWords}`,
+      `Time Taken: ${formatDuration(currentMetrics.totalTime)}`,
+      `Final Interest Level: ${conversationContext.currentInterestLevel.toFixed(1)}/10`
+    ]
+
+    stats.forEach(stat => {
+      pdf.text(`• ${stat}`, margin, yPosition)
+      yPosition += 8
+    })
+
+    yPosition += 15
+
+    // Add conversation header (simple)
+    pdf.setFontSize(16)
+    pdf.setFont('helvetica', 'bold')
+    pdf.text('Conversation', margin, yPosition)
+    yPosition += 12
+
+    // Add horizontal line
+    pdf.setLineWidth(0.5)
+    pdf.line(margin, yPosition, pageWidth - margin, yPosition)
+    yPosition += 15
+
+    // Add conversation messages (simple format)
+    pdf.setFontSize(11)
+    messages.forEach((message, index) => {
+      // Check if we need a new page
+      if (yPosition > pageHeight - 40) {
+        pdf.addPage()
+        yPosition = margin
+      }
+
+      // Add timestamp (centered)
+      pdf.setFont('helvetica', 'normal')
+      pdf.setTextColor(120, 120, 120)
+      pdf.text(formatTime(message.timestamp), pageWidth / 2, yPosition, { align: 'center' })
+      yPosition += 10
+
+      // Add speaker name
+      pdf.setTextColor(0, 0, 0)
+      pdf.setFont('helvetica', 'bold')
+      const speaker = message.isUser ? (userPreferences?.name || 'You') : persona.name
+      pdf.text(`${speaker}:`, margin, yPosition)
+      yPosition += 8
+
+      // Add message text
+      pdf.setFont('helvetica', 'normal')
+      yPosition = addWrappedText(message.text, margin, yPosition, pageWidth - 2 * margin, 11)
+      yPosition += 10
+
+      // Add separator line between messages
+      if (index < messages.length - 1) {
+        pdf.setLineWidth(0.2)
+        pdf.setDrawColor(200, 200, 200)
+        pdf.line(margin, yPosition, pageWidth - margin, yPosition)
+        yPosition += 8
+      }
+    })
+
+    // Add simple footer
+    const date = new Date().toLocaleDateString()
+    pdf.setTextColor(100, 100, 100)
+    pdf.setFontSize(10)
+    pdf.setFont('helvetica', 'normal')
+    pdf.text(`Generated on ${date} by Rizzable`, pageWidth / 2, pageHeight - 10, { align: 'center' })
+
+    // Save the PDF
+    const fileName = `Rizzable_${persona.name}_${date.replace(/\//g, '-')}.pdf`
+    pdf.save(fileName)
+  }
+
   // Function to get rizz rating text
   const getRizzRating = (score: number, isTimeout: boolean = false, isFriendzone: boolean = false): { text: string; emoji: string } => {
     if (score === 100) return { text: "LEGENDARY RIZZ", emoji: "" }
@@ -845,9 +1009,9 @@ function App() {
             ) : isTimeout ? (
               <>
                 <h2>Game Over!</h2>
-                <p>Time's up! You took too long or sent too many messages.</p>
+                <p>Time's up! You took too long to make your move.</p>
                 <p className="timeout-message">
-                  {metrics.totalTime > 300 ? 'Over 5 minutes' : '30+ messages'} - work on your efficiency!
+                  5 minutes passed - work on your efficiency!
                 </p>
               </>
             ) : (
@@ -887,6 +1051,14 @@ function App() {
           </div>
           
           <div className="popup-actions">
+            <button 
+              className="try-again-btn secondary"
+              onClick={exportConversationAsPDF}
+              title="Export this conversation as PDF"
+            >
+              <Download size={16} style={{ marginRight: '8px' }} />
+              Export PDF
+            </button>
             <button 
               className="try-again-btn secondary"
                           onClick={() => {
@@ -982,6 +1154,10 @@ function App() {
             </div>
           </div>
           <div className="header-actions">
+            <div className={`countdown-timer ${timeRemaining <= 60 ? 'warning' : timeRemaining <= 30 ? 'danger' : ''}`}>
+              <span className="countdown-label">Time:</span>
+              <span className="countdown-value">{formatCountdown(timeRemaining)}</span>
+            </div>
             <button className="header-btn" onClick={returnHome} title="Return Home">
               <Home size={20} />
             </button>

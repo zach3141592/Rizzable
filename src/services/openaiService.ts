@@ -126,7 +126,8 @@ export async function testOpenAIConnection(): Promise<boolean> {
 export async function generateAIResponse(
   userMessage: string,
   persona: AIPersona,
-  context: ConversationContext
+  context: ConversationContext,
+  userName?: string
 ): Promise<{ response: string; interestLevel: number }> {
   console.log('🤖 Generating AI response for message:', userMessage);
   
@@ -136,7 +137,7 @@ export async function generateAIResponse(
     console.log('📊 Interest level:', interestLevel);
     
     // Create the system prompt based on persona
-    const systemPrompt = createSystemPrompt(persona, interestLevel);
+    const systemPrompt = createSystemPrompt(persona, interestLevel, userName);
     
     // Build conversation history
     const messages = [
@@ -183,8 +184,8 @@ export async function generateAIResponse(
 }
 
 function calculateInterestLevel(context: ConversationContext): number {
-  // Start with slightly higher base interest - they're more open to charm
-  let interest = 2;
+  // Start with base interest level
+  let interest = 1;
   
   // Get the last few messages to analyze conversation quality
   const recentMessages = context.messages.slice(-4);
@@ -224,19 +225,35 @@ function calculateInterestLevel(context: ConversationContext): number {
       interest += 1; // They like enthusiastic responses
     }
     
+    // NEW: Bonus for asking any question (shows engagement)
+    if (/\?/.test(content)) {
+      interest += 0.8; // Questions show interest in them
+    }
+    
+    // NEW: Bonus for positive words/expressions
+    if (/(good|great|nice|cool|awesome|sweet|fun|interesting|love|like)/.test(content)) {
+      interest += 0.6; // Positive language is attractive
+    }
+    
+    // NEW: Bonus for showing interest in them
+    if (/(you|your|about you|tell me|share|what|how|why)/.test(content)) {
+      interest += 0.4; // Focusing on them is charming
+    }
+    
     // No penalties - only positive interactions count toward interest
   });
   
   // More generous bonus for conversation length
-  interest += Math.min(context.messageCount * 0.3, 3); // Increased from 0.2 and 2
+  interest += Math.min(context.messageCount * 0.35, 3.5); // Slightly increased multiplier and cap
   
-  // Add some personality randomness (slightly more positive)
-  interest += (Math.random() - 0.3) * 1; // Shifted from -0.5 to -0.3 for more positive bias
+  // Add some personality randomness (more positive)
+  interest += (Math.random() - 0.25) * 1; // Shifted from -0.3 to -0.25 for more positive bias
   
   return Math.max(0, Math.min(10, interest));
 }
 
-function createSystemPrompt(persona: AIPersona, interestLevel: number): string {
+function createSystemPrompt(persona: AIPersona, interestLevel: number, userName?: string): string {
+  const userNameText = userName ? ` Their name is ${userName}. IMPORTANT: Only use their name occasionally don't overuse it.` : '';
   const basePrompt = `You are ${persona.name}, a Gen Z person. You are ${persona.personality}.
 
 CRITICAL RULE: ALL RESPONSES MUST BE UNDER 15 WORDS. BE CONCISE AND PUNCHY.
@@ -247,17 +264,32 @@ PERSONALITY DETAILS:
 - Your conversation style: ${persona.conversationStyle}
 - Current interest level in this person: ${interestLevel}/10
 
-CONTEXT: You're chatting on a dating app. This person is trying to get to know you and potentially ask you out.
+CONTEXT: You're chatting on a dating app. This person is trying to get to know you and potentially ask you out.${userNameText}
 
 CRITICAL: DATING RULES - YOU'RE CHARMING AND OPEN TO ROMANCE
 - You're flirty and fun but still have self-respect
+- If interest is higher than 5, you're open to dates
+- If interest is higher than 7, you're very open to dates
 - REJECT immediate date requests only if interest is below 4 - you need to feel some connection first  
 - Dating eagerness based on interest level:
   * Interest 8+: VERY eager for dates - say yes enthusiastically and suggest activities
   * Interest 6-7: Quite open to dates - say yes readily with excitement  
   * Interest 4-5: Willing to consider dates - say yes but maybe a bit hesitant
   * Interest 0-3: Not ready yet - politely decline but keep it playful
-- If asked out too early (low interest), respond playfully: "whoa slow down tiger", "let's vibe first", "you're moving kinda fast but I like the energy", "not so fast cutie"
+- If asked out too early (interest less than 4), respond naturally with "slow down" vibes:
+  * Playful but firm: "whoa there", "easy tiger", "pump the brakes", "slow your roll", "hold up", "not so fast"
+  * Want to know them first: "let's talk more first", "i barely know you lol", "we just started talking", "let's vibe first", "get to know me better first"
+  * Acknowledge but redirect: "you're sweet but let's chat more", "i like the energy but slow down", "cute but we're moving fast", "appreciate the confidence but chill"
+  * Gentle rejection: "maybe after we talk more", "let's see where this goes first", "one step at a time", "too soon bestie"
+  * Honest reactions: "that's kinda forward ngl", "you move fast huh", "bit much for just meeting", "we literally just met"
+- VARY YOUR "SLOW DOWN" RESPONSES - don't repeat the same phrase, mix different styles based on personality
+- MATCH THE ENERGY - if they're being super forward, be more direct; if they're sweet, be gentler
+- PERSONALITY-SPECIFIC SLOW DOWN STYLES:
+  * Playful/Fun types: "lol slow down", "you're funny but chill", "ok tiger calm down" 
+  * Sweet/Warm types: "that's sweet but let's talk first", "aw but let's get to know each other"
+  * Witty/Sarcastic types: "well that escalated quickly", "someone's confident", "0 to 100 real quick"
+  * Mysterious types: "interesting approach", "bold move", "we'll see about that"
+  * Direct/Honest types: "too fast for me", "not ready for that yet", "let's slow down"
 - You appreciate personality, humor, compliments, and genuine interest in YOU
 - Be receptive to charm, flirting, and compliments - you enjoy the attention
 - Reward genuine conversation, playful banter, and authentic charm with flirty responses

@@ -92,12 +92,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
         {/* Header */}
         <div className="landing-header">
           <div className="landing-title">
-            <Heart className="title-icon heart" />
             <h1 className="app-title">Rizzable</h1>
-            <Sparkles className="title-icon sparkle" />
           </div>
           <p className="landing-subtitle">
-            The AI dating simulator where your charm is the only currency
+            The AI dating simulator that helps you get more huzz
           </p>
         </div>
 
@@ -118,11 +116,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
             </div>
             <div className="instruction-item">
               <Sparkles className="instruction-icon purple" />
-              <p><strong>Your goal</strong> - Convince them to go on a date through genuine conversation and charm</p>
+              <p><strong>Your goal</strong> - Convince them to go on a date through genuine conversation and rizzabilities</p>
             </div>
           </div>
           <div className="pro-tip">
-            <p><strong>Pro tip:</strong> Be authentic, ask thoughtful questions, and let the AI lead the conversation naturally. Authenticity beats pickup lines!</p>
+            <p><strong>Pro tip:</strong> Be authentic and ask thoughtful questions. Authenticity beats tryna be nonchalant.</p>
           </div>
         </div>
 
