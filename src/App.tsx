@@ -4,6 +4,8 @@ import { generateRandomPersona, AIPersona, UserPreferences as PersonaUserPrefere
 import { generateAIResponse, ConversationContext, testOpenAIConnection, generateFirstMessage } from './services/openaiService'
 import LandingPage from './components/LandingPage'
 import jsPDF from 'jspdf'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import './App.css'
 
 interface Message {
@@ -1085,7 +1087,13 @@ function App() {
 
   // Show landing page if not completed
   if (!hasCompletedLanding) {
-    return <LandingPage onStart={handleLandingComplete} />
+    return (
+      <>
+        <LandingPage onStart={handleLandingComplete} />
+        <Analytics />
+        <SpeedInsights />
+      </>
+    )
   }
 
   // Show loading while initializing chat
@@ -1099,6 +1107,8 @@ function App() {
           {apiStatus === 'failed' && <p className="api-status error">AI temporarily offline (using fallback)</p>}
           {apiStatus === 'working' && <p className="api-status success">AI ready!</p>}
         </div>
+        <Analytics />
+        <SpeedInsights />
       </div>
     )
   }
@@ -1263,6 +1273,10 @@ function App() {
 
       {/* Game Completion Popup */}
       <GameCompletionPopup />
+      
+      {/* Vercel Analytics & Speed Insights */}
+      <Analytics />
+      <SpeedInsights />
     </div>
   )
 }
