@@ -1,4 +1,4 @@
-# 💕 Rizzable - AI Dating Simulator
+# Rizzable - AI Dating Simulator
 
 A fun chatbot game where you try to convince an AI persona to go on a date with you! Features a beautiful Apple Messages-style interface with **authentic Gen Z personalities** powered by OpenAI.
 
